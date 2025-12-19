@@ -8,6 +8,10 @@ terraform {
       source = "hashicorp/tls"
       version = "4.1.0"
     }
+    pxc = {
+      source = "pxc/proxmox-cloud"
+      version = ">= 0.0.1"
+    }
   }
 }
 
