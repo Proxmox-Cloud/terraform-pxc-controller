@@ -6,9 +6,9 @@ terraform {
       source = "hashicorp/kubernetes"
       version = "2.36.0"
     }
-    tls = {
-      source = "hashicorp/tls"
-      version = "4.1.0"
+    helm = {
+      source = "hashicorp/helm"
+      version = "3.1.1"
     }
     pxc = {
       source = "pxc/proxmox-cloud"
@@ -28,4 +28,13 @@ provider "kubernetes" {
   client_key = base64decode(local.kubeconfig.users[0].user.client-key-data)
   host = local.kubeconfig.clusters[0].cluster.server
   cluster_ca_certificate = base64decode(local.kubeconfig.clusters[0].cluster.certificate-authority-data)
+}
+
+provider "helm" {
+  kubernetes = {
+    client_certificate = base64decode(local.kubeconfig.users[0].user.client-certificate-data)
+    client_key = base64decode(local.kubeconfig.users[0].user.client-key-data)
+    host = local.kubeconfig.clusters[0].cluster.server
+    cluster_ca_certificate = base64decode(local.kubeconfig.clusters[0].cluster.certificate-authority-data) 
+  }
 }

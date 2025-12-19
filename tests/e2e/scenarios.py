@@ -147,3 +147,23 @@ def controller_scenario(request, get_proxmoxer, get_test_env, set_pve_cloud_auth
 
   if not request.config.getoption("--skip-cleanup"):
     destroy(scenario_name)
+
+
+
+@pytest.fixture(scope="session")
+def deployments_scenario(request, controller_scenario, get_k8s_api_v1):
+  scenario_name = "deployments"
+  
+  # generate random hostname for helm nginx test deployment
+  # todo: refactor into terraform output -json and generate the random variable via tf so it doesnt change on each test run
+  random_nginx_test_name = f"nginx-test-{''.join(random.choices(string.ascii_letters + string.digits, k=6)).lower()}"
+  os.environ["TF_VAR_nginx_rnd_hostname"] = random_nginx_test_name
+
+  if not request.config.getoption("--skip-apply"):
+    apply("pxc-controller", scenario_name, get_k8s_api_v1, True, True)
+    time.sleep(10) # ingress dns time
+
+  yield { "random_nginx_test_name": random_nginx_test_name }
+
+  if not request.config.getoption("--skip-cleanup"):
+    destroy(scenario_name)

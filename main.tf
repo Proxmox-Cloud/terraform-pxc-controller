@@ -4,7 +4,23 @@ resource "kubernetes_namespace" "pve_cloud_controller" {
   }
 }
 
+data "pxc_cluster_vars" "vars" {}
+
+data "pxc_cloud_secret" "bind_key" {
+  secret_name = "internal.key"
+}
+
+data "pxc_cloud_secret" "patroni" {
+  secret_name = "patroni.pass"
+}
+
 locals {
+  cluster_vars = yamldecode(data.pxc_cluster_vars.vars.vars)
+
+  bind_dns_update_key = regex("secret\\s*\"([^\"]+)\"", data.pxc_cloud_secret.bind_key.secret)[0]
+
+  pg_conn_str = "postgresql+psycopg2://postgres:${data.pxc_cloud_secret.patroni.secret}@${local.cluster_vars.pve_haproxy_floating_ip_internal}:5000/pve_cloud?sslmode=disable"
+
   default_exclude_mirror_namespaces = [
     "default", "kube-system", "kube-public", 
     "kube-node-lease", "pve-cloud-controller", 
@@ -69,7 +85,7 @@ resource "kubernetes_manifest" "watcher" {
                 - name: STACK_FQDN
                   value: '${var.k8s_stack_fqdn}'
                 - name: PG_CONN_STR
-                  value: '${var.pg_conn_str}'
+                  value: '${local.pg_conn_str}'
                 - name: EXCLUDE_TLS_NAMESPACES
                   value: '${join(",", concat(local.default_exclude_tls_namespaces, var.exclude_tls_namespaces))}'
       %{ if var.harbor_mirror_host != null && var.harbor_mirror_auth != null }
@@ -143,7 +159,7 @@ resource "kubernetes_manifest" "adm_deployment" {
                   raedOnly: true
               env:
                 - name: PG_CONN_STR
-                  value: '${var.pg_conn_str}'
+                  value: '${local.pg_conn_str}'
                 - name: EXCLUDE_MIRROR_NAMESPACES
                   value: '${join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))}'
       %{ if var.harbor_mirror_host != null && var.harbor_mirror_auth != null }
@@ -152,14 +168,12 @@ resource "kubernetes_manifest" "adm_deployment" {
                 - name: HARBOR_MIRROR_PULL_SECRET_NAME
                   value: 'mirror-pull-secret'
       %{ endif }
-      %{ if var.bind_master_ip != null && var.bind_dns_update_key != null && var.internal_proxy_floating_ip != null }
                 - name: BIND_MASTER_IP
-                  value: '${var.bind_master_ip}'
+                  value: '${local.cluster_vars.bind_master_ip}'
                 - name: BIND_DNS_UPDATE_KEY
-                  value: '${var.bind_dns_update_key}'
+                  value: '${local.bind_dns_update_key}'
                 - name: INTERNAL_PROXY_FIP
-                  value: '${var.internal_proxy_floating_ip}' 
-      %{ endif}
+                  value: '${local.cluster_vars.pve_haproxy_floating_ip_internal}' 
       %{ if var.route53_access_key_id != null && var.route53_secret_access_key != null && var.external_forwarded_ip != null }
                 - name: ROUTE53_REGION
                   value: '${var.route53_region}'
@@ -336,21 +350,19 @@ resource "kubernetes_manifest" "cron" {
                     - name: STACK_FQDN
                       value: '${var.k8s_stack_fqdn}'
                     - name: PG_CONN_STR
-                      value: '${var.pg_conn_str}'
+                      value: '${local.pg_conn_str}'
       %{ if var.harbor_mirror_host != null && var.harbor_mirror_auth != null }
                     - name: HARBOR_MIRROR_HOST
                       value: '${var.harbor_mirror_host}'
                     - name: HARBOR_MIRROR_PULL_SECRET_NAME
                       value: 'mirror-pull-secret'
       %{ endif }
-      %{ if var.bind_master_ip != null && var.bind_dns_update_key != null && var.internal_proxy_floating_ip != null }
                     - name: BIND_MASTER_IP
-                      value: '${var.bind_master_ip}'
+                      value: '${local.cluster_vars.bind_master_ip}'
                     - name: BIND_DNS_UPDATE_KEY
-                      value: '${var.bind_dns_update_key}'
+                      value: '${local.bind_dns_update_key}'
                     - name: INTERNAL_PROXY_FIP
-                      value: '${var.internal_proxy_floating_ip}' 
-      %{ endif}
+                      value: '${local.cluster_vars.pve_haproxy_floating_ip_internal}' 
       %{ if var.route53_access_key_id != null && var.route53_secret_access_key != null && var.external_forwarded_ip != null }
                     - name: ROUTE53_REGION
                       value: '${var.route53_region}'

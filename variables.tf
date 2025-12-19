@@ -39,11 +39,6 @@ variable "k8s_stack_fqdn" {
   description = "Stack name of kubespray inv + '.' + pve cloud domain."
 }
 
-variable "pg_conn_str" {
-  type = string
-  description = "Postgres connection string to pve cloud patroni postgres service."
-}
-
 variable "exclude_mirror_namespaces" {
   type = list(string)
   description = "Namespaces to exclude from harbor registry mirroring (admission controller hook)."
@@ -54,19 +49,6 @@ variable "exclude_tls_namespaces" {
   type = list(string)
   description = "Namespaces that dont get cluster-tls injected."
   default = []
-}
-
-# ingress dns is mandatory, clean dns this way
-variable "bind_master_ip" {
-  type = string
-}
-
-variable "bind_dns_update_key" {
-  type = string
-}
-
-variable "internal_proxy_floating_ip" {
-  type = string
 }
 
 # route53 credentials, if specified this will enable external ingress dns
