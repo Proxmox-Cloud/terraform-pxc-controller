@@ -26,7 +26,7 @@ terraform {
     }
     pxc = {
       source = "pxc/proxmox-cloud"
-      version = ">= 0.0.1" # tdd builds are always 0.0.TIMESTAMP
+      version = ">~ 0.0.1" # pxc sed ci - DONT REMOVE COMMENT!
     }
   }
 }
