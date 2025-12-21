@@ -1,7 +1,7 @@
 # trigger a new release on gitlab
 release_tag:
   stage: build
-  image: tobiashvmz/pve-cloud-ci:2025122113
+  image: docker.io/tobiashvmz/pve-cloud-ci:2025122115
   script:
     - pwd
     - /scripts/release-tag.sh
@@ -13,7 +13,7 @@ release_tag:
 # push the new tag to github so goreleaser can do its job
 push_github:
   stage: deploy
-  image: tobiashvmz/pve-cloud-ci:2025122113
+  image: docker.io/tobiashvmz/pve-cloud-ci:2025122115
   script:
     - git config --global user.name "$GITLAB_USER_NAME"
     - git config --global user.email "$GITLAB_USER_EMAIL"
@@ -28,7 +28,7 @@ push_github:
 
 pve_cloud_controller_upstream:
   stage: build
-  image: tobiashvmz/pve-cloud-ci:2025122113
+  image: docker.io/tobiashvmz/pve-cloud-ci:2025122115
   script:
     # write the new version
     - sed -i "s/var\.cloud_controller_version\s==\s\?\snull\s?\s\".*\"/var.cloud_controller_version == null ? \"${PVE_CLOUD_CONTROLLER}\"/" variables.tf
@@ -41,7 +41,7 @@ pve_cloud_controller_upstream:
 # pipeline trigger if the upstream releases
 pxc_prov_upstream:
   stage: build
-  image: tobiashvmz/pve-cloud-ci:2025122113
+  image: docker.io/tobiashvmz/pve-cloud-ci:2025122115
   script:
     # update all versions.tf files with the new provider tag
     - 'find . -type f -name "versions.tf" -exec sed -i "s/version.*pxc/version = \"~>${PXC_PROV_VERSION}\" # pxc/" {} +'
