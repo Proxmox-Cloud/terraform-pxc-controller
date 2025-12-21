@@ -11,7 +11,7 @@ terraform {
       version = "3.1.1"
     }
     pxc = {
-      source = "pxc/proxmox-cloud"
+      source = "Proxmox-Cloud/pxc"
       version = ">= 0.0.1" # tdd builds are always 0.0.TIMESTAMP
     }
   }
