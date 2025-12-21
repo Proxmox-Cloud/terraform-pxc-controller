@@ -1,7 +1,7 @@
 # trigger a new release on gitlab
 release_tag:
   stage: build
-  image: tobiashvmz/pve-cloud-ci:2025121321
+  image: tobiashvmz/pve-cloud-ci:2025122113
   script:
     - pwd
     - /scripts/release-tag.sh
@@ -13,7 +13,7 @@ release_tag:
 # push the new tag to github so goreleaser can do its job
 push_github:
   stage: deploy
-  image: tobiashvmz/pve-cloud-ci:2025121321
+  image: tobiashvmz/pve-cloud-ci:2025122113
   script:
     - git config --global user.name "$GITLAB_USER_NAME"
     - git config --global user.email "$GITLAB_USER_EMAIL"
@@ -30,11 +30,12 @@ push_github:
 # pipeline trigger if the upstream releases
 pxc_prov_upstream:
   stage: build
-  image: tobiashvmz/pve-cloud-ci:2025121321
+  image: tobiashvmz/pve-cloud-ci:2025122113
   script:
     # update all versions.tf files with the new provider tag
-    - 'find . -type f -name "versions.tf" -exec sed -i "s/version.*pxc/version = \">~ ${PXC_PROV_VERSION}\" # pxc/" {} +'
+    - 'find . -type f -name "versions.tf" -exec sed -i "s/version.*pxc/version = \"~>${PXC_PROV_VERSION}\" # pxc/" {} +'
     - /scripts/upstream-push.sh "Update pxc provider version to $PXC_PROV_VERSION"
+    # todo: maybe merge on paralellism
   rules:
     - if: ( $PXC_PROV_VERSION != null || $PXC_PROV_VERSION =~ /^./ ) # set by upstream
 
@@ -50,3 +51,15 @@ trigger_upstream_release_tag:
         "${CI_API_V4_URL}/projects/${CI_PROJECT_ID}/trigger/pipeline"
   rules:
     - if: $UPSTREAM_TAG_MESSAGE =~ /-all-/ && ( $PXC_PROV_VERSION != null || $PXC_PROV_VERSION =~ /^./ ) # set by upstream
+    - if: $UPSTREAM_TAG_MESSAGE =~ /-all-/ && ( $PVE_CLOUD_CONTROLLER != null || $PVE_CLOUD_CONTROLLER =~ /^./ )
+
+pve_cloud_controller_upstream:
+  stage: build
+  image: tobiashvmz/pve-cloud-ci:2025122113
+  script:
+    # write the new version
+    - sed -i "s/var\.cloud_controller_version\s==\s\?\snull\s?\s\".*\"/var.cloud_controller_version == null ? \"${PVE_CLOUD_CONTROLLER}\"/" variables.tf
+    - /scripts/upstream-push.sh "Update pve-cloud-controller version to ${PVE_CLOUD_CONTROLLER}"
+    # todo: maybe merge on paralellism
+  rules:
+    - if: ( $PVE_CLOUD_CONTROLLER != null || $PVE_CLOUD_CONTROLLER =~ /^./ ) # set by upstream
