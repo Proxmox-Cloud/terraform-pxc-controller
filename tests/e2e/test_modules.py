@@ -81,7 +81,7 @@ def test_adm_pod_creation(get_k8s_api_v1, controller_scenario):
 
 
 def test_cloud_cron_execution(set_k8s_auth, controller_scenario):
-  logger.info("test backup create and restore")
+  logger.info("test cron exec")
 
   kubeconfig = set_k8s_auth
 
