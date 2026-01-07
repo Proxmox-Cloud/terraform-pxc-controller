@@ -2,7 +2,7 @@ terraform {
   required_providers {
     harbor = {
       source = "goharbor/harbor"
-      version = "3.11.0"
+      version = "3.11.3"
     }
     kubernetes = {
       source = "hashicorp/kubernetes"
