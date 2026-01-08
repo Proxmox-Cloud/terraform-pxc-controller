@@ -123,19 +123,12 @@ def get_moto_client(get_test_env, get_proxmoxer, controller_scenario):
 def controller_scenario(request, get_proxmoxer, get_test_env, set_pve_cloud_auth, get_k8s_api_v1): 
   scenario_name = "controller"
 
-  if os.getenv("TDDOG_LOCAL_IFACE"):
-    # get version for image from redis
-    r = redis.Redis(host='localhost', port=6379, db=0)
-    local_build_ctrl_version = r.get("version.pve-cloud-controller")
+  ctlr_vers, tdd_ip = get_tdd_version("pve-cloud-controller")
 
-    if local_build_ctrl_version:
-      logger.info(f"found local version {local_build_ctrl_version.decode()}")
-      
-      # set controller base image
-      os.environ["TF_VAR_cloud_controller_image"] = f"{get_ipv4(os.getenv('TDDOG_LOCAL_IFACE'))}:5000/pve-cloud-controller"
-      os.environ["TF_VAR_cloud_controller_version"] = local_build_ctrl_version.decode()
-    else:
-      logger.warning(f"did not find local build pve cloud controller version even though TDDOG_LOCAL_IFACE env is defined")
+  if ctlr_vers:
+    # set controller base image
+    os.environ["TF_VAR_cloud_controller_image"] = f"{tdd_ip}:5000/pve-cloud-controller"
+    os.environ["TF_VAR_cloud_controller_version"] = ctlr_vers
 
   if not request.config.getoption("--skip-apply"):
     apply("pxc-controller", scenario_name, get_k8s_api_v1, True, True) # always upgrade to get tdd build provider and inject custom e2e rc
