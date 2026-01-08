@@ -18,7 +18,7 @@ resource "helm_release" "kube_prom_stack" {
   namespace        = "pve-cloud-monitoring-client"
   create_namespace = true
 
-  version = "72.3.1"
+  version = "72.9.1"
 
   values = [
     yamlencode({
