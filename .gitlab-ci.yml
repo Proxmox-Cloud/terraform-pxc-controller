@@ -1,51 +1,3 @@
-# trigger a new release on gitlab
-release_tag:
-  stage: build
-  image: docker.io/tobiashvmz/pve-cloud-ci:202601081028
-  script:
-    - /scripts/release-tag.sh
-  rules:
-    - if: '$CI_COMMIT_TAG =~ /^release-[a-z]+$/'
-  resource_group: deploy-prod
-
-rc_tag:
-  stage: build
-  image: docker.io/tobiashvmz/pve-cloud-ci:202601081028
-  script:
-    - /scripts/rc-tag.sh
-  rules:
-    - if: '$CI_COMMIT_TAG =~ /^rc-[a-z]+$/'
-  resource_group: deploy-prod
-
-
-# push the new tag to github so the terraform registry picks it up
-push_github:
-  stage: deploy
-  image: docker.io/tobiashvmz/pve-cloud-ci:202601081028
-  script:
-    - git config --global user.name "$GITLAB_USER_NAME"
-    - git config --global user.email "$GITLAB_USER_EMAIL"
-    # add github remote
-    - git remote add github https://$GITHUB_TOKEN@github.com/Proxmox-Cloud/terraform-pxc-controller.git
-    - git push github HEAD:master
-    - git push github $CI_COMMIT_TAG
-  rules:
-    - if: '$CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+$/' # semver
-
-push_rc_github:
-  stage: deploy
-  image: docker.io/tobiashvmz/pve-cloud-ci:202601081028
-  script:
-    - git config --global user.name "$GITLAB_USER_NAME"
-    - git config --global user.email "$GITLAB_USER_EMAIL"
-    # add github remote
-    - git remote add github https://$GITHUB_TOKEN@github.com/Proxmox-Cloud/terraform-pxc-controller.git
-    # no need to push the branch rc release tag is enough
-    - git push github $CI_COMMIT_TAG
-  rules:
-    - if: '$CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+-rc\d+$/' # release candidate
-
-
 pve_cloud_controller_upstream:
   stage: build
   image: docker.io/tobiashvmz/pve-cloud-ci:202601081028
@@ -73,7 +25,6 @@ pve_cloud_controller_rc_upstream:
   rules:
     - if: '$PVE_CLOUD_CONTROLLER != null && $PVE_CLOUD_CONTROLLER != "" && $UPSTREAM_TAG_MESSAGE =~ /^rc-.*/' # set by upstream
   resource_group: deploy-prod # paralellism through single build call
-
 
 # pipeline trigger if the upstream releases
 pxc_prov_upstream:
@@ -103,6 +54,51 @@ pxc_prov_rc_upstream:
     - if: '$PXC_PROV_VERSION != null && $PXC_PROV_VERSION != "" && $UPSTREAM_TAG_MESSAGE =~ /^rc-.*/' # set by upstream
   resource_group: deploy-prod
 
+# trigger a new release on gitlab
+release_tag:
+  stage: build
+  image: docker.io/tobiashvmz/pve-cloud-ci:202601081028
+  script:
+    - /scripts/release-tag.sh
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^release-[a-z]+$/'
+  resource_group: deploy-prod
+
+rc_tag:
+  stage: build
+  image: docker.io/tobiashvmz/pve-cloud-ci:202601081028
+  script:
+    - /scripts/rc-tag.sh
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^rc-[a-z]+$/'
+  resource_group: deploy-prod
+
+# push the new tag to github so the terraform registry picks it up
+push_github:
+  stage: deploy
+  image: docker.io/tobiashvmz/pve-cloud-ci:202601081028
+  script:
+    - git config --global user.name "$GITLAB_USER_NAME"
+    - git config --global user.email "$GITLAB_USER_EMAIL"
+    # add github remote
+    - git remote add github https://$GITHUB_TOKEN@github.com/Proxmox-Cloud/terraform-pxc-controller.git
+    - git push github HEAD:master
+    - git push github $CI_COMMIT_TAG
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+$/' # semver
+
+push_rc_github:
+  stage: deploy
+  image: docker.io/tobiashvmz/pve-cloud-ci:202601081028
+  script:
+    - git config --global user.name "$GITLAB_USER_NAME"
+    - git config --global user.email "$GITLAB_USER_EMAIL"
+    # add github remote
+    - git remote add github https://$GITHUB_TOKEN@github.com/Proxmox-Cloud/terraform-pxc-controller.git
+    # no need to push the branch rc release tag is enough
+    - git push github $CI_COMMIT_TAG
+  rules:
+    - if: '$CI_COMMIT_TAG =~ /^\d+\.\d+\.\d+-rc\d+$/' # release candidate
 
 format_source:
   stage: build
