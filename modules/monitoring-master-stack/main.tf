@@ -50,7 +50,7 @@ resource "helm_release" "kube_prom_stack" {
   namespace        = "pve-cloud-monitoring-master"
   create_namespace = true
 
-  version = "72.3.1"
+  version = "72.9.1"
 
   values = [
     # scrape configs for all lxcs / vms that expose systemd prometheus exporter
