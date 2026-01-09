@@ -55,6 +55,7 @@ variable "exclude_tls_namespaces" {
 variable "route53_access_key_id" {
   type = string
   default = null
+  description = "Route53 credentials, when specified the controller will try to use external DNS."
 }
 
 variable "route53_secret_access_key" {
@@ -70,6 +71,7 @@ variable "route53_region" {
 variable "external_forwarded_ip" {
   type = string
   default = null
+  description = "The ip used in external dns while creating route53 records. Should point to the forwarded ip you use."
 }
 
 variable "cluster_cert_entries" {
