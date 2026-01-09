@@ -6,7 +6,7 @@ resource "random_password" "gotify_admin_pw" {
 resource "helm_release" "gotify" {
   repository = "https://pmoscode-helm.github.io/gotify/"
   chart = "gotify"
-  version = "0.5.2"
+  version = "0.7.0"
   name = "gotify"
   namespace = helm_release.kube_prom_stack.namespace
 
