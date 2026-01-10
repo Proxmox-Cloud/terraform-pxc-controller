@@ -19,7 +19,7 @@ provider "pxc" {
 resource "helm_release" "nginx_test" {
   repository = "https://charts.bitnami.com/bitnami"
   chart = "nginx"
-  version = "22.0.11"
+  version = "22.4.2"
   create_namespace = true
   namespace = "nginx-test"
   
@@ -42,7 +42,7 @@ resource "helm_release" "nginx_test" {
 resource "helm_release" "nginx_external_test" {
   repository = "https://charts.bitnami.com/bitnami"
   chart = "nginx"
-  version = "22.0.11"
+  version = "22.4.2"
   create_namespace = true
   namespace = "nginx-external-test"
   
@@ -65,7 +65,7 @@ resource "helm_release" "nginx_external_test" {
 resource "helm_release" "nginx_ns_delete_test" {
   repository = "https://charts.bitnami.com/bitnami"
   chart = "nginx"
-  version = "22.0.11"
+  version = "22.4.2"
   create_namespace = true
   namespace = "nginx-ns-delete-test"
   
@@ -139,7 +139,7 @@ resource "kubernetes_manifest" "karma_ingress" {
 resource "helm_release" "nginx_test_proto" {
   repository = "https://charts.bitnami.com/bitnami"
   chart = "nginx"
-  version = "22.0.11"
+  version = "22.4.2"
   create_namespace = true
   namespace = "nginx-test-prxy-proto"
   
