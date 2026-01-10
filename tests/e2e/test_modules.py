@@ -67,6 +67,7 @@ def test_adm_pod_creation(get_k8s_api_v1, controller_scenario):
         assert ctlr_pods
 
         for pod in ctlr_pods:
+            logger.info(pod)
             assert pod.status.phase in ["Running", "Succeeded"]
 
             for status in pod.status.container_statuses:
