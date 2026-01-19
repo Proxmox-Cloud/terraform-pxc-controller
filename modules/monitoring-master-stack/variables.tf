@@ -46,7 +46,7 @@ variable "disk_temperature_warn" {
   default = 50
 }
 
-variable "optional_scrape_hosts" {
+variable "optional_scrape_pve_hosts" {
   type = list(string)
   default = []
 }
@@ -78,3 +78,4 @@ variable "alertmanger_e2e_ingress" {
   default = false
   description = "Toggle alertmanager ingress for testing purposes."
 }
+

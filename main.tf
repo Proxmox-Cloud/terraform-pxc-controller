@@ -77,6 +77,7 @@ resource "kubernetes_manifest" "watcher" {
             app.kubernetes.io/name: pve-cloud-watcher
             app.kubernetes.io/version: '${local.cloud_controller_version}'
         spec:
+          priorityClassName: system-cluster-critical
           containers:
             - name: watcher
               image: "${local.cloud_controller_image}:${local.cloud_controller_version}"
@@ -134,6 +135,7 @@ resource "kubernetes_manifest" "adm_deployment" {
             app.kubernetes.io/name: pve-cloud-adm
             app.kubernetes.io/version: '${local.cloud_controller_version}'
         spec:
+          priorityClassName: system-cluster-critical
           volumes:
             - name: pve-cloud-adm-tls
               secret:
@@ -188,7 +190,15 @@ resource "kubernetes_manifest" "adm_deployment" {
                 - name: ROUTE53_ENDPOINT_URL
                   value: '${var.route53_endpoint_url}'
       %{ endif}
-              command: [ "adm" ]
+              command: ["gunicorn"]
+              args:
+                - "-w"
+                - "4"
+                - "-b"
+                - "0.0.0.0:443"
+                - "--certfile=/etc/tls/tls.crt"
+                - "--keyfile=/etc/tls/tls.key"
+                - "pve_cloud_ctrl.adm:app"
               ports:
                 - name: https
                   containerPort: 443
@@ -222,6 +232,7 @@ resource "kubernetes_mutating_webhook_configuration" "adm_hook" {
   metadata {
     name = "pve-cloud-adm"
   }
+
 
   webhook {
     name = "pod.pve-cloud-adm.pve.cloud"
@@ -382,6 +393,7 @@ resource "kubernetes_manifest" "cron" {
                     - name: EXCLUDE_TLS_NAMESPACES
                       value: '${join(",", concat(local.default_exclude_tls_namespaces, var.exclude_tls_namespaces))}'
                   command: [ "cron" ]
+
   YAML
   )
 }

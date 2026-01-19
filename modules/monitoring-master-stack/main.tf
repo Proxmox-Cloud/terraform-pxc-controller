@@ -16,7 +16,15 @@ data "pxc_pve_api_get" "get_vms" {
   }
 }
 
+data "pxc_ceph_access" "ceph_access" {}
+
+data "pxc_cluster_vars" "vars" {}
+
 locals {
+  cluster_vars = yamldecode(data.pxc_cluster_vars.vars.vars)
+
+  mon_hosts = split(" ",trimspace(regex("mon_host\\s=\\s([0-9. ]+)", data.pxc_ceph_access.ceph_access.ceph_conf)[0]))
+
   # merge all pvesh api query results together
   pve_vm_api_response = flatten([for target_pve, get in data.pxc_pve_api_get.get_vms: jsondecode(get.json_resp)])
 
@@ -40,7 +48,6 @@ locals {
     ]
   })
 }
-
 
 resource "helm_release" "kube_prom_stack" {
   repository = "https://prometheus-community.github.io/helm-charts"
@@ -79,7 +86,7 @@ resource "helm_release" "kube_prom_stack" {
                     targets = [ "${host_values.ansible_host}:9558" ]
                     labels = {
                       "host" = "${host}.${pve_cluster}"
-                      "optional" = contains(var.optional_scrape_hosts, "${host}.${pve_cluster}")
+                      "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${pve_cluster}")
                     }
                   }
                 ]
@@ -93,12 +100,15 @@ resource "helm_release" "kube_prom_stack" {
                     targets = [ "${host_values.ansible_host}:9100" ]
                     labels = {
                       "host" = "${host}.${pve_cluster}"
-                      "optional" = contains(var.optional_scrape_hosts, "${host}.${pve_cluster}")
+                      "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${pve_cluster}")
                     }
                   }
                 ]
               ])
             },
+            # todo: build metrics for vm but solve tcp udp problem. haproxy / k8s only receive tcp, which causes the exporter
+            # on the proxmox side to crash the ui if its unreachable
+            # currently no rules are tied to this service and its inactive
             {
               job_name = "pve-metrics"
               dns_sd_configs = [
@@ -106,6 +116,27 @@ resource "helm_release" "kube_prom_stack" {
                   names = [ "graphite-exporter-headless.pve-cloud-monitoring-master.svc.cluster.local" ]
                   type = "A"
                   port = 9108
+                }
+              ]
+            },
+            {
+              # any mon ip could also contain a manager, we simply try to scrape all
+              job_name = "ceph-mgrs"
+              static_configs = [
+                for mon in local.mon_hosts : {
+                  targets = [ "${mon}:9283" ]
+                  labels = {
+                    "optional" = true
+                  }
+                }
+              ]
+            },
+            {
+              # any mon ip could also contain a manager, we simply try to scrape all
+              job_name = "cluster-proxy"
+              static_configs = [
+                {
+                  targets = [ "${local.cluster_vars.pve_haproxy_floating_ip_internal}:8405" ]
                 }
               ]
             }
@@ -138,37 +169,18 @@ resource "helm_release" "kube_prom_stack" {
         }
       }
     }),
-    # additional rules based on our custom scrape targets
+    # shared rules
+    var.enable_temperature_rules ? templatefile("${path.module}/../monitoring-rules-shared/temp-rules.yaml.tftpl", {
+      cpu_temperature_warn     = var.cpu_temperature_warn
+      thermal_temperature_warn = var.thermal_temperature_warn
+      disk_temperature_warn    = var.disk_temperature_warn
+    }) : "{}",
+    file("${path.module}/../monitoring-rules-shared/pve-cluster.yaml"),
+    # additional master stack based rules
     yamlencode({
-      # disable default TargetDown rule, implement own that allows for optional scrape targets
-      defaultRules = {
-        disabled = {
-          TargetDown = true
-        }
-      }
-      additionalPrometheusRulesMap = merge({
-        "default-override" = {
-          groups = [
-            {
-              name = "override"
-              rules = [
-                {
-                  alert = "TargetDown"
-                  "for" = "10m"
-                  expr = "100 * (count by (cluster, job, namespace, service) (up{optional!=\"true\"} == 0) / count by (cluster, job, namespace, service) (up{optional!=\"true\"})) > 10"
-                  annotations = {
-                    summary = "One or more targets are unreachable."
-                    description = "	{{ printf \"%.4g\" $value }}% of the {{ $labels.job }}/{{ $labels.service }} targets in {{ $labels.namespace }} namespace are down."
-                  }
-                  labels = {
-                    severity = "warning"
-                  }
-                }
-              ]
-            }
-          ]
-        }
-        "pve-cloud-rules" = {
+      additionalPrometheusRulesMap = merge(
+        {
+        "awx-rules" = {
           groups = [
             {
               name = "awx"
@@ -186,71 +198,13 @@ resource "helm_release" "kube_prom_stack" {
                   }
                 }
               ]
-            },
-            {
-              name = "systemd"
-              rules = [
-                {
-                  alert = "systemd service failed"
-                  "for" = "1m"
-                  expr = "systemd_unit_state{state=\"failed\"} == 1"
-                  labels = {
-                    severity = "critical"
-                  }
-                  annotations = {
-                    summary = "Systemd service {{ $labels.name }} in stack {{ $labels.stack }} failed."
-                    description = "Instance {{ $labels.instance }} systemd service {{ $labels.name }} entered failed state."
-                  }
-                }
-              ]
-            },
-            {
-              name = "pve-node"
-              rules = var.enable_temperature_rules ? [
-                {
-                  alert = "cpu temperature high"
-                  "for" = "1m"
-                  expr = "node_hwmon_temp_celsius{chip=~\".*coretemp.*\"} > ${var.cpu_temperature_warn}"
-                  labels = {
-                    severity = "critical"
-                  }
-                  annotations = {
-                    summary = "CPU temp of {{ $labels.host }} - {{ $labels.sensor }} is high."
-                    description = "CPU temperature is at {{ $value }} of {{ $labels.host }} - sensor {{ $labels.sensor }}."
-                  }
-                },
-                {
-                  alert = "thermal zone temperature high"
-                  "for" = "1m"
-                  expr = "node_hwmon_temp_celsius{chip=~\".*thermal.*\"} > ${var.thermal_temperature_warn}"
-                  labels = {
-                    severity = "critical"
-                  }
-                  annotations = {
-                    summary = "Thermal zone temp {{ $labels.host }} - {{ $labels.sensor }} is high."
-                    description = "Thermal zone temperature is at {{ $value }} of {{ $labels.host }} - sensor {{ $labels.sensor }}."
-                  }
-                },
-                {
-                  alert = "disk temperature high"
-                  "for" = "1m"
-                  expr = "smartmon_temperature_celsius_raw_value > ${var.disk_temperature_warn}"
-                  labels = {
-                    severity = "critical"
-                  }
-                  annotations = {
-                    summary = "Disk temp of {{ $labels.instance }} - {{ $labels.disk }} is high."
-                    description = "Disk temperature is at {{ $value }} of {{ $labels.host }} - disk {{ $labels.disk }}."
-                  }
-                }
-              ] : []
             }
           ]
         }
       },
       var.extra_alert_rules)
     }),
-    # alertmanager settings
+    # alertmanager settings and notification piping
     yamlencode({
       alertmanager = {
         ingress = {

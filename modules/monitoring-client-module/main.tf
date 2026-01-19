@@ -1,3 +1,15 @@
+data "pxc_ceph_access" "ceph_access" {}
+
+data "pxc_pve_inventory" "inv" {}
+
+data "pxc_cluster_vars" "vars" {}
+
+locals {
+  cluster_vars = yamldecode(data.pxc_cluster_vars.vars.vars)
+  # get all pve clusters in our cloud
+  pve_inventory = yamldecode(data.pxc_pve_inventory.inv.inventory)
+  mon_hosts = split(" ",trimspace(regex("mon_host\\s=\\s([0-9. ]+)", data.pxc_ceph_access.ceph_access.ceph_conf)[0]))
+}
 
 resource "kubernetes_secret" "basic_auth_secret" {
   type = "Opaque"
@@ -21,6 +33,71 @@ resource "helm_release" "kube_prom_stack" {
   version = "72.9.1"
 
   values = [
+    # scrape targets
+    yamlencode(var.monitor_proxmox_cluster ? {
+      prometheus = {
+        prometheusSpec = {
+          additionalScrapeConfigs = concat([
+            {
+              job_name = "pve-systemd"
+              static_configs = flatten([
+                for pve_cluster, pve_hosts in local.pve_inventory : [
+                  for host, host_values in pve_hosts : {
+                    targets = [ "${host_values.ansible_host}:9558" ]
+                    labels = {
+                      "host" = "${host}.${pve_cluster}"
+                      "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${pve_cluster}")
+                    }
+                  }
+                ]
+              ])
+            },
+            {
+              job_name = "pve-node"
+              static_configs = flatten([
+                for pve_cluster, pve_hosts in local.pve_inventory : [
+                  for host, host_values in pve_hosts : {
+                    targets = [ "${host_values.ansible_host}:9100" ]
+                    labels = {
+                      "host" = "${host}.${pve_cluster}"
+                      "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${pve_cluster}")
+                    }
+                  }
+                ]
+              ])
+            },
+            {
+              # any mon ip could also contain a manager, we simply try to scrape all
+              job_name = "ceph-mgrs"
+              static_configs = [
+                for mon in local.mon_hosts : {
+                  targets = [ "${mon}:9283" ]
+                  labels = {
+                    "optional" = true
+                  }
+                }
+              ]
+            },
+            {
+              # any mon ip could also contain a manager, we simply try to scrape all
+              job_name = "cluster-proxy"
+              static_configs = [
+                {
+                  targets = [ "${local.cluster_vars.pve_haproxy_floating_ip_internal}:8405" ]
+                }
+              ]
+            }
+          ])
+        }
+      }
+    } : {}),
+    # shared rules
+    var.monitor_proxmox_cluster ? file("${path.module}/../monitoring-rules-shared/pve-cluster.yaml") : "{}", # empty object to merge by helm
+    var.enable_temperature_rules && var.var.monitor_proxmox_cluster ? templatefile("${path.module}/../monitoring-rules-shared/temp-rules.yaml.tftpl", {
+      cpu_temperature_warn     = var.cpu_temperature_warn
+      thermal_temperature_warn = var.thermal_temperature_warn
+      disk_temperature_warn    = var.disk_temperature_warn
+    }) : "{}",
     yamlencode({
       alertmanager = {
         # expose alertmanager via ingress for karma in master stack to fetch

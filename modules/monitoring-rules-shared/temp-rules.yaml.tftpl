@@ -1,0 +1,31 @@
+additionalPrometheusRulesMap:
+  pve-cluster-temp-rules:
+    groups:
+      - name: "pve-node-temp"
+        rules:
+          - alert: "cpu temperature high"
+            for: "1m"
+            expr: 'node_hwmon_temp_celsius{chip=~".*coretemp.*"} > ${cpu_temperature_warn}'
+            labels:
+              severity: "critical"
+            annotations:
+              summary: "CPU temp of {{ $labels.host }} - {{ $labels.sensor }} is high."
+              description: "CPU temperature is at {{ $value }} of {{ $labels.host }} - sensor {{ $labels.sensor }}."
+
+          - alert: "thermal zone temperature high"
+            for: "1m"
+            expr: 'node_hwmon_temp_celsius{chip=~".*thermal.*"} > ${thermal_temperature_warn}'
+            labels:
+              severity: "critical"
+            annotations:
+              summary: "Thermal zone temp {{ $labels.host }} - {{ $labels.sensor }} is high."
+              description: "Thermal zone temperature is at {{ $value }} of {{ $labels.host }} - sensor {{ $labels.sensor }}."
+
+          - alert: "disk temperature high"
+            for: "1m"
+            expr: "smartmon_temperature_celsius_raw_value > ${disk_temperature_warn}"
+            labels:
+              severity: "critical"
+            annotations:
+              summary: "Disk temp of {{ $labels.instance }} - {{ $labels.disk }} is high."
+              description: "Disk temperature is at {{ $value }} of {{ $labels.host }} - disk {{ $labels.disk }}."

@@ -26,6 +26,7 @@ output "robot_creds" {
   value = {
     full_name = harbor_robot_account.account.full_name
     secret = harbor_robot_account.account.secret
+    auth_b64 = base64encode("${harbor_robot_account.account.full_name}:${harbor_robot_account.account.secret}")
     dockerconfig =  <<-CFG
       {
               "auths": {
