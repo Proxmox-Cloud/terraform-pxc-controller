@@ -35,34 +35,19 @@ resource "helm_release" "gotify" {
 # gotify startup time
 resource "time_sleep" "gotify_startup" {
   depends_on = [ helm_release.gotify ]
-
   create_duration = "60s"
 }
 
-# create first app
-resource "null_resource" "post_gotify_app" {
+
+# create application in gotify for notifications of the master k8s stack
+resource "pxc_gotify_app" "master_app" {
   depends_on = [ time_sleep.gotify_startup ]
-  provisioner "local-exec" {
-    command = <<EOT
-      curl -u 'admin:${random_password.gotify_admin_pw.result}' ${var.insecure_tls ? "-k" : ""} \
-        -X POST https://gotify.${var.ingress_apex}/application \
-        -H "Content-Type: application/json" \
-        -d '{"name":"${var.k8s_stack_name}"}'
-    EOT
-  }
+  gotify_host = "gotify.${var.ingress_apex}"
+  gotify_admin_pw = random_password.gotify_admin_pw.result
+  app_name = "${data.pxc_cloud_self.self.target_pve}"
+  allow_insecure = var.insecure_tls
 }
 
-# fetch application token
-data "http" "gotify_apps" {
-  depends_on = [ null_resource.post_gotify_app ]
-  url = "https://gotify.${var.ingress_apex}/application"
-
-  request_headers = {
-    Accept        = "application/json"
-    Authorization = "Basic ${base64encode("admin:${random_password.gotify_admin_pw.result}")}"
-  }
-  insecure = var.insecure_tls
-}
 
 # converts alertmanager receiver hook format to gotify post
 resource "kubernetes_deployment" "alertmanager_gotify_bridge" {
@@ -103,7 +88,7 @@ resource "kubernetes_deployment" "alertmanager_gotify_bridge" {
           }
           env {
             name  = "GOTIFY_TOKEN"
-            value = one([for app in jsondecode(data.http.gotify_apps.response_body): app.token if app.name == "${var.k8s_stack_name}"])
+            value = pxc_gotify_app.master_app.app_token
           }
         }
       }
@@ -133,6 +118,18 @@ resource "kubernetes_service" "alertmanager_gotify" {
   }
 }
 
-output "gotify_admin_pw" {
-  value = nonsensitive(random_password.gotify_admin_pw.result)
+# create for later reading in client module
+resource "pxc_cloud_secret" "gotify_pw" {
+  secret_name = "gotify_admin_pw"
+  secret_data = jsonencode({
+    host = "gotify.${var.ingress_apex}"
+    password = random_password.gotify_admin_pw.result
+  })
+}
+
+# create gotify notification target inside proxmox
+# with this proxmox errors will get send to gotify
+resource "pxc_pve_gotify_target" "master_target" {
+  gotify_host = "gotify.${var.ingress_apex}"
+  gotify_token = pxc_gotify_app.master_app.app_token
 }

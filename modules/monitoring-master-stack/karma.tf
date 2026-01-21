@@ -1,3 +1,11 @@
+# fetch client alertmanagers
+data "pxc_cloud_secrets" "mon_clients" {
+  secret_type = "mon-alertmgr-client"
+}
+
+locals {
+  mon_clients = jsondecode(data.pxc_cloud_secrets.mon_clients.secrets_data)
+}
 
 resource "kubernetes_config_map" "karma" {
   metadata {
@@ -11,7 +19,7 @@ resource "kubernetes_config_map" "karma" {
         interval = "5s"
         servers = concat([
           {
-            name = var.k8s_stack_name
+            name = "${data.pxc_cloud_self.self.stack_name}.${local.cluster_vars.pve_cloud_domain}"
             uri = "http://kube-prometheus-stack-alertmanager.${helm_release.kube_prom_stack.namespace}.svc.cluster.local:9093"
             proxy = true
             healthcheck = {
@@ -21,7 +29,22 @@ resource "kubernetes_config_map" "karma" {
               }
             }
           }
-        ], var.external_karma_alertmanagers)
+        ], var.external_karma_alertmanagers,
+        [for secret_name, mon_client_secret in local.mon_clients : {
+          name = mon_client_secret["k8s_stack_name"]
+          uri = "https://${mon_client_secret["host"]}/"
+          proxy = true
+          healthcheck = {
+            # filters out the default watchdog alert
+            filters = {
+              "pve-cloud-monitoring-master/kube-prometheus-stack-prometheus" = [ "alertname=Watchdog" ]
+            }
+          }
+          headers = {
+            Authorization = "Basic ${base64encode("karma:${mon_client_secret["password"]}")}"
+          }
+        }]
+        )
       }
       # ui settings, custom colors and severity labels
       ui = {

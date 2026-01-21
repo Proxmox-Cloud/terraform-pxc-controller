@@ -4,22 +4,28 @@ resource "kubernetes_namespace" "pve_cloud_controller" {
   }
 }
 
-data "pxc_cluster_vars" "vars" {}
+data "pxc_cloud_self" "self" {}
 
-data "pxc_cloud_secret" "bind_key" {
+data "pxc_cloud_file_secret" "bind_key" {
   secret_name = "internal.key"
 }
 
-data "pxc_cloud_secret" "patroni" {
+data "pxc_cloud_file_secret" "patroni" {
   secret_name = "patroni.pass"
 }
 
 locals {
-  cluster_vars = yamldecode(data.pxc_cluster_vars.vars.vars)
+  cluster_vars = yamldecode(data.pxc_cloud_self.self.cluster_vars)
 
-  bind_dns_update_key = regex("secret\\s*\"([^\"]+)\"", data.pxc_cloud_secret.bind_key.secret)[0]
+  k8s_stack_fqdn = "${data.pxc_cloud_self.self.stack_name}.${local.cluster_vars.pve_cloud_domain}"
 
-  pg_conn_str = "postgresql+psycopg2://postgres:${data.pxc_cloud_secret.patroni.secret}@${local.cluster_vars.pve_haproxy_floating_ip_internal}:5000/pve_cloud?sslmode=disable"
+  cluster_cert_entries = yamldecode(data.pxc_cloud_self.self.cluster_cert_entries)
+
+  external_domains = yamldecode(data.pxc_cloud_self.self.external_domains)
+
+  bind_dns_update_key = regex("secret\\s*\"([^\"]+)\"", data.pxc_cloud_file_secret.bind_key.secret)[0]
+
+  pg_conn_str = "postgresql+psycopg2://postgres:${data.pxc_cloud_file_secret.patroni.secret}@${local.cluster_vars.pve_haproxy_floating_ip_internal}:5000/pve_cloud?sslmode=disable"
 
   default_exclude_mirror_namespaces = [
     "default", "kube-system", "kube-public", 
@@ -84,7 +90,7 @@ resource "kubernetes_manifest" "watcher" {
               imagePullPolicy: IfNotPresent
               env:
                 - name: STACK_FQDN
-                  value: '${var.k8s_stack_fqdn}'
+                  value: '${local.k8s_stack_fqdn}'
                 - name: PG_CONN_STR
                   value: '${local.pg_conn_str}'
                 - name: EXCLUDE_TLS_NAMESPACES
@@ -108,8 +114,8 @@ resource "kubernetes_config_map" "cluster_cert_entries" {
   }
 
   data = {
-    "cluster_cert_entries.json" = jsonencode(var.cluster_cert_entries)
-    "external_domains.json" = jsonencode(var.external_domains)
+    "cluster_cert_entries.json" = jsonencode(local.cluster_cert_entries)
+    "external_domains.json" = jsonencode(local.external_domains)
   }
 }
 
@@ -359,7 +365,7 @@ resource "kubernetes_manifest" "cron" {
                       raedOnly: true
                   env:
                     - name: STACK_FQDN
-                      value: '${var.k8s_stack_fqdn}'
+                      value: '${local.k8s_stack_fqdn}'
                     - name: PG_CONN_STR
                       value: '${local.pg_conn_str}'
       %{ if var.harbor_mirror_host != null && var.harbor_mirror_auth != null }

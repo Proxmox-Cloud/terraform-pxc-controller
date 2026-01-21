@@ -2,13 +2,51 @@ data "pxc_ceph_access" "ceph_access" {}
 
 data "pxc_pve_inventory" "inv" {}
 
-data "pxc_cluster_vars" "vars" {}
+data "pxc_cloud_self" "self" {}
+
+data "pxc_cloud_vms" "vms" {}
 
 locals {
-  cluster_vars = yamldecode(data.pxc_cluster_vars.vars.vars)
+  cluster_vars = yamldecode(data.pxc_cloud_self.self.cluster_vars)
   # get all pve clusters in our cloud
   pve_inventory = yamldecode(data.pxc_pve_inventory.inv.inventory)
   mon_hosts = split(" ",trimspace(regex("mon_host\\s=\\s([0-9. ]+)", data.pxc_ceph_access.ceph_access.ceph_conf)[0]))
+
+  # prefilter terraform if stream is stupid
+  vms_with_exporter = [
+    for vm in jsondecode(data.pxc_cloud_vms.vms.vms_json) : {
+      name = vm.name
+      stack_domain = one([for tag in split(";", vm.tags) : tag if endswith(tag, local.cluster_vars.pve_cloud_domain)])
+    }
+    if contains(keys(vm), "blake_vars") && contains(keys(vm["blake_vars"]), "install_prom_systemd_exporter") && vm["blake_vars"]["install_prom_systemd_exporter"]
+  ] 
+
+  stack_domains = distinct([for vm in local.vms_with_exporter : vm.stack_domain])
+
+  systemd_mon_vms_grouped = tomap({
+    for domain in local.stack_domains :
+    domain => [
+      for vm in local.vms_with_exporter : vm if vm.stack_domain == domain
+    ]
+  })
+
+}
+
+resource "random_password" "alertmanager_pw" {
+  length           = 16
+  special          = false
+}
+
+// save the alertmanager password so the main stack can discover it
+// the entire client monitoring discovery hinges on this secret + type
+resource "pxc_cloud_secret" "alertmanager_mon" {
+  secret_name = "${data.pxc_cloud_self.self.stack_name}.${data.pxc_cloud_self.self.target_pve}"
+  secret_data = jsonencode({
+    host = var.alertmanager_host
+    k8s_stack_name = data.pxc_cloud_self.self.stack_name
+    password = random_password.alertmanager_pw.result
+  })
+  secret_type = "mon-alertmgr-client"
 }
 
 resource "kubernetes_secret" "basic_auth_secret" {
@@ -18,7 +56,7 @@ resource "kubernetes_secret" "basic_auth_secret" {
     namespace = helm_release.kube_prom_stack.namespace
   }
   data = {
-    "auth" : "karma:${bcrypt(var.alertmanager_basic_pw)}"
+    "auth" : "karma:${bcrypt(random_password.alertmanager_pw.result)}"
   }
 }
 
@@ -37,7 +75,20 @@ resource "helm_release" "kube_prom_stack" {
     yamlencode(var.monitor_proxmox_cluster ? {
       prometheus = {
         prometheusSpec = {
-          additionalScrapeConfigs = concat([
+          additionalScrapeConfigs = [
+            {
+              job_name = "vms-systemd"
+              static_configs = [
+                for stack_domain, vms in local.systemd_mon_vms_grouped : {
+                  targets = [
+                    for mon_vm in vms : "${mon_vm.name}.${join(".", slice(split(".", mon_vm.stack_domain), 1, length(split(".", mon_vm.stack_domain))))}:9558"
+                  ]
+                  labels = {
+                    "stack" = stack_domain
+                  }
+                }
+              ]
+            },
             {
               job_name = "pve-systemd"
               static_configs = flatten([
@@ -87,7 +138,7 @@ resource "helm_release" "kube_prom_stack" {
                 }
               ]
             }
-          ])
+          ]
         }
       }
     } : {}),

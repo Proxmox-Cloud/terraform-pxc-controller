@@ -34,11 +34,6 @@ variable "harbor_mirror_auth" {
   description = "Dockerconfig that will created and assigned to the pods."
 }
 
-variable "k8s_stack_fqdn" {
-  type = string
-  description = "Stack name of kubespray inv + '.' + pve cloud domain."
-}
-
 variable "exclude_mirror_namespaces" {
   type = list(string)
   description = "Namespaces to exclude from harbor registry mirroring (admission controller hook)."
@@ -72,23 +67,6 @@ variable "external_forwarded_ip" {
   type = string
   default = null
   description = "The ip used in external dns while creating route53 records. Should point to the forwarded ip you use."
-}
-
-variable "cluster_cert_entries" {
-  type = list(object({
-    zone              = string
-    names             = list(string)
-    authoritative_zone = optional(bool, false)
-    apex_zone_san      = optional(bool, false)
-  }))
-}
-
-variable "external_domains" {
-  type = list(object({
-    zone              = string
-    names             = list(string)
-    expose_apex      = optional(bool, false)
-  }))
 }
 
 # this is optional and used for e2e testing with moto aws mock

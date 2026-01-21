@@ -1,25 +1,19 @@
-# create app for cluster
-resource "null_resource" "post_gotify_app" {
-  provisioner "local-exec" {
-    command = <<EOT
-      curl -u 'admin:${var.gotify_admin_pw}' \
-        -X POST https://${var.gotify_host}/application \
-        -H "Content-Type: application/json" \
-        -d '{"name":"${var.k8s_stack_name}"}'
-    EOT
-  }
+data "pxc_cloud_secret" "gotify_admin_pw" {
+  secret_name = "gotify_admin_pw"
 }
 
-# fetch application token
-data "http" "gotify_apps" {
-  depends_on = [ null_resource.post_gotify_app ]
-  url = "https://${var.gotify_host}/application"
-
-  request_headers = {
-    Accept        = "application/json"
-    Authorization = "Basic ${base64encode("admin:${var.gotify_admin_pw}")}"
-  }
+locals {
+  gotify_admin_pw = jsondecode(data.pxc_cloud_secret.gotify_admin_pw.secret_data)
 }
+
+# create application in gotify for notifications of the master k8s stack
+resource "pxc_gotify_app" "client_app" {
+  gotify_host = local.gotify_admin_pw.host
+  gotify_admin_pw = local.gotify_admin_pw.password
+  app_name = "${data.pxc_cloud_self.self.stack_name}.${data.pxc_cloud_self.self.target_pve}"
+  allow_insecure = var.insecure_tls
+}
+
 
 # converts alertmanager receiver hook format to gotify post
 resource "kubernetes_deployment" "alertmanager_gotify_bridge" {
@@ -56,11 +50,11 @@ resource "kubernetes_deployment" "alertmanager_gotify_bridge" {
           }
           env {
             name  = "GOTIFY_ENDPOINT"
-            value = "https://${var.gotify_host}/message"
+            value = "https://${local.gotify_admin_pw.host}/message"
           }
           env {
             name  = "GOTIFY_TOKEN"
-            value = one([for app in jsondecode(data.http.gotify_apps.response_body): app.token if app.name == "${var.k8s_stack_name}"])
+            value =  pxc_gotify_app.client_app.app_token
           }
         }
       }

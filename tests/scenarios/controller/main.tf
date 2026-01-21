@@ -17,15 +17,16 @@ locals {
   test_pve_conf = yamldecode(file(var.test_pve_conf))
 }
 
+variable "e2e_kubespray_inv" {
+  type = string
+}
+
 provider "pxc" {
-  target_pve = "${local.test_pve_conf["pve_test_cluster_name"]}.${local.test_pve_conf["pve_test_cloud_domain"]}"
-  k8s_stack_name = "pytest-k8s"
+  kubespray_inv = var.e2e_kubespray_inv
 }
 
 module "controller" {
   source = "../../../"
-
-  k8s_stack_fqdn = "pytest-k8s.${local.test_pve_conf["pve_test_cloud_domain"]}"
 
   cloud_controller_image = var.cloud_controller_image
   cloud_controller_version = var.cloud_controller_version
@@ -36,20 +37,6 @@ module "controller" {
   route53_secret_access_key = "test"
   external_forwarded_ip = "127.0.0.1" # test too
   route53_endpoint_url = "http://pve-cloud-moto.moto-mock.svc.cluster.local:5000"
-
-  cluster_cert_entries = [
-    {
-      zone = local.test_pve_conf["pve_test_deployments_domain"],
-      names = ["*"]
-    }
-  ]
-
-  external_domains = [
-    {
-      zone = local.test_pve_conf["pve_test_deployments_domain"],
-      names = ["external-example", "test-dns-delete"]
-    }
-  ]
 }
 
 resource "kubernetes_namespace" "moto_mock" {
@@ -111,3 +98,21 @@ resource "kubernetes_manifest" "moto_service" {
   YAML
   )
 }
+
+# data "pxc_cloud_vms" "test" {
+# }
+
+# output "vms" {
+#   value = jsondecode(data.pxc_cloud_vms.test.vms_json)
+# }
+
+# resource "pxc_gotify_app" "test" {
+#   gotify_host = "gotify.testing.tobias-huebner.tech"
+#   gotify_admin_pw = "7xor0d]3#*U$bcNh"
+#   app_name = "nogtest"
+#   allow_insecure = true
+# }
+
+# output "gotify_app_token" {
+#   value = pxc_gotify_app.test.app_token
+# }

@@ -1,12 +1,3 @@
-variable "k8s_stack_name" {
-  type = string
-}
-
-variable "systemd_mon_stack_fqdns" {
-  type = list(string)
-  default = []
-}
-
 variable "ingress_apex" {
   type = string
 }
@@ -64,7 +55,7 @@ variable "extra_alert_rules" {
 variable "external_karma_alertmanagers" {
   type = list(any)
   default = []
-  description = "For backwards compatibility and intergrating systems that dont use the client-stack."
+  description = "DEPRECATED! For backwards compatibility and intergrating systems that dont use the client-stack discovery."
 }
 
 variable "insecure_tls" {

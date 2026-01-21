@@ -1,25 +1,6 @@
-variable "k8s_stack_name" {
-  type = string
-}
-
-variable "gotify_host" {
-  type = string
-  description = "Master stack gotify address. Needed to register application for this client stack."
-}
-
-variable "gotify_admin_pw" {
-  type = string
-  description = "Administrator password for gotify to register this stack."
-}
-
 variable "alertmanager_host" {
   type = string
-  description = "Host to expose this stacks alertmanager under. This then needs to be inserted into the master monitoring stack to bundle alerts."
-}
-
-variable "alertmanager_basic_pw" {
-  type = string
-  description = "Basic password for accessing this alert manager via https."
+  description = "Host to expose this stacks alertmanager under. This is needed for the master monitoring stack to bundle and discover alerts."
 }
 
 variable "monitor_proxmox_cluster" {

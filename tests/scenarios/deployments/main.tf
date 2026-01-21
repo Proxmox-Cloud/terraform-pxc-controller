@@ -11,9 +11,12 @@ locals {
   test_pve_conf = yamldecode(file(var.test_pve_conf))
 }
 
+variable "e2e_kubespray_inv" {
+  type = string
+}
+
 provider "pxc" {
-  target_pve = "${local.test_pve_conf["pve_test_cluster_name"]}.${local.test_pve_conf["pve_test_cloud_domain"]}"
-  k8s_stack_name = "pytest-k8s"
+  kubespray_inv = var.e2e_kubespray_inv
 }
 
 resource "helm_release" "nginx_test" {
@@ -88,14 +91,6 @@ resource "helm_release" "nginx_ns_delete_test" {
 
 module "tf_monitoring" {
   source = "../../../modules/monitoring-master-stack"
-  systemd_mon_stack_fqdns = [
-    "ha-dhcp.${local.test_pve_conf["pve_test_cloud_domain"]}",
-    "ha-bind.${local.test_pve_conf["pve_test_cloud_domain"]}",
-    "ha-postgres.${local.test_pve_conf["pve_test_cloud_domain"]}",
-    "ha-haproxy.${local.test_pve_conf["pve_test_cloud_domain"]}",
-    "pytest-backup-lxc.${local.test_pve_conf["pve_test_cloud_domain"]}"
-  ]
-  k8s_stack_name = "pytest-k8s.${local.test_pve_conf["pve_test_cloud_domain"]}"
   ingress_apex = local.test_pve_conf["pve_test_deployments_domain"]
 
   enable_temperature_rules = true

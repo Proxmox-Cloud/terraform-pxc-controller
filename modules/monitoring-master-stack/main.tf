@@ -7,44 +7,33 @@ locals {
   target_pves = toset([for pve_cluster, pve_hosts in local.pve_inventory : "${pve_cluster}.${data.pxc_pve_inventory.inv.cloud_domain}"])
 }
 
-data "pxc_pve_api_get" "get_vms" {
-  for_each = local.target_pves
-  api_path = "/cluster/resources"
-  target_pve = each.key
-  get_args = {
-    "--type" = "vm"
-  }
-}
+
+data "pxc_cloud_vms" "vms" {}
 
 data "pxc_ceph_access" "ceph_access" {}
 
-data "pxc_cluster_vars" "vars" {}
+data "pxc_cloud_self" "self" {}
 
 locals {
-  cluster_vars = yamldecode(data.pxc_cluster_vars.vars.vars)
+  cluster_vars = yamldecode(data.pxc_cloud_self.self.cluster_vars)
 
   mon_hosts = split(" ",trimspace(regex("mon_host\\s=\\s([0-9. ]+)", data.pxc_ceph_access.ceph_access.ceph_conf)[0]))
 
-  # merge all pvesh api query results together
-  pve_vm_api_response = flatten([for target_pve, get in data.pxc_pve_api_get.get_vms: jsondecode(get.json_resp)])
-
   # prefilter terraform if stream is stupid
-  vms_with_tags = [
-    for vm in local.pve_vm_api_response : vm
-    if contains(keys(vm), "tags")
-  ]
+  vms_with_exporter = [
+    for vm in jsondecode(data.pxc_cloud_vms.vms.vms_json) : {
+      name = vm.name
+      stack_domain = one([for tag in split(";", vm.tags) : tag if endswith(tag, local.cluster_vars.pve_cloud_domain)])
+    }
+    if contains(keys(vm), "blake_vars") && contains(keys(vm["blake_vars"]), "install_prom_systemd_exporter") && vm["blake_vars"]["install_prom_systemd_exporter"]
+  ] 
 
-  systemd_mon_vms = [for vm in local.vms_with_tags : {
-    name = vm.name
-    stack_domain = one([for tag in split(";", vm.tags) : tag if contains(var.systemd_mon_stack_fqdns, tag)])
-  } if anytrue([for stack_fqdn in var.systemd_mon_stack_fqdns : strcontains(vm.tags, stack_fqdn)])]
-
-  stack_domains = distinct([for vm in local.systemd_mon_vms : vm.stack_domain])
+  stack_domains = distinct([for vm in local.vms_with_exporter : vm.stack_domain])
 
   systemd_mon_vms_grouped = tomap({
     for domain in local.stack_domains :
     domain => [
-      for vm in local.systemd_mon_vms : vm if vm.stack_domain == domain
+      for vm in local.vms_with_exporter : vm if vm.stack_domain == domain
     ]
   })
 }

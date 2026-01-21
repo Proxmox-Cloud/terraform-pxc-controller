@@ -7,10 +7,10 @@ This module configures mirror repositories within your harbor artifactory so tha
 After you initialized your harbor with this you can use the cloud controller like this to pull images from proxy repositories inside harbor instead:
 
 ```tf
-data "pxc_cluster_vars" "cvars" {}
+data "pxc_cloud_self" "self" {}
 
 locals {
-  cluster_vars = yamldecode(data.pxc_cluster_vars.cvars.vars)
+  cluster_vars = yamldecode(data.pxc_cloud_self.self.cluster_vars)
 }
 
 module "cloud_controller" {
