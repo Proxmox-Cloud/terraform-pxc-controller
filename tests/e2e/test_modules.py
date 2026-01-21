@@ -491,7 +491,10 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
     for alert in alerts:
         severity = alert["labels"]["severity"]
 
-        if severity == "critical" and alert["labels"]["alertname"] != 'haproxy all backends down':
+        if (
+            severity == "critical"
+            and alert["labels"]["alertname"] != "haproxy all backends down"
+        ):
             critical_alerts.append(alert["labels"]["alertname"])
         elif severity == "warning":
             warning_alerts.append(alert["labels"]["alertname"])
