@@ -39,98 +39,94 @@ locals {
   })
 }
 
-output "scrape_configs" {
+output "scrape_config" {
   # list of yaml strings with configs
-  value = [
-    var.monitor_proxmox_cluster ? yamlencode({
-        prometheus = {
-            prometheusSpec = {
-                additionalScrapeConfigs = [
-                    {
-                        job_name = "vms-systemd"
-                        static_configs = [
-                            for stack_domain, vms in local.systemd_mon_vms_grouped : {
-                                targets = [
-                                    for mon_vm in vms : "${mon_vm.name}.${join(".", slice(split(".", mon_vm.stack_domain), 1, length(split(".", mon_vm.stack_domain))))}:9558"
-                                ]
-                                labels = {
-                                    "stack" = stack_domain
-                                }
+  value = var.monitor_proxmox_cluster ? yamlencode({
+    prometheus = {
+        prometheusSpec = {
+            additionalScrapeConfigs = flatten([
+            [
+                {
+                    job_name = "vms-systemd"
+                    static_configs = [
+                        for stack_domain, vms in local.systemd_mon_vms_grouped : {
+                            targets = [
+                                for mon_vm in vms : "${mon_vm.name}.${join(".", slice(split(".", mon_vm.stack_domain), 1, length(split(".", mon_vm.stack_domain))))}:9558"
+                            ]
+                            labels = {
+                                "stack" = stack_domain
                             }
-                        ]
-                    },
-                    {
-                        job_name = "pve-systemd"
-                        static_configs = flatten([
-                        for pve_cluster, pve_hosts in local.pve_inventory : [
-                            for host, host_values in pve_hosts : {
-                                targets = [ "${host_values.ansible_host}:9558" ]
-                                labels = {
-                                    "host" = "${host}.${pve_cluster}"
-                                    "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${pve_cluster}")
-                                }
+                        }
+                    ]
+                },
+                {
+                    job_name = "pve-systemd"
+                    static_configs = flatten([
+                    for pve_cluster, pve_hosts in local.pve_inventory : [
+                        for host, host_values in pve_hosts : {
+                            targets = [ "${host_values.ansible_host}:9558" ]
+                            labels = {
+                                "host" = "${host}.${pve_cluster}"
+                                "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${pve_cluster}")
                             }
-                        ]
-                        ])
-                    },
-                    {
-                        job_name = "pve-node"
-                        static_configs = flatten([
-                        for pve_cluster, pve_hosts in local.pve_inventory : [
-                            for host, host_values in pve_hosts : {
-                                targets = [ "${host_values.ansible_host}:9100" ]
-                                labels = {
-                                    "host" = "${host}.${pve_cluster}"
-                                    "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${pve_cluster}")
-                                }
+                        }
+                    ]
+                    ])
+                },
+                {
+                    job_name = "pve-node"
+                    static_configs = flatten([
+                    for pve_cluster, pve_hosts in local.pve_inventory : [
+                        for host, host_values in pve_hosts : {
+                            targets = [ "${host_values.ansible_host}:9100" ]
+                            labels = {
+                                "host" = "${host}.${pve_cluster}"
+                                "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${pve_cluster}")
                             }
-                        ]
-                        ])
-                    },
-                    {
-                        # any mon ip could also contain a manager, we simply try to scrape all
-                        job_name = "ceph-mgrs"
-                        static_configs = [
-                            for mon in local.ceph_mon_hosts : {
-                                targets = [ "${mon}:9283" ]
-                                labels = {
-                                    "optional" = true
-                                }
+                        }
+                    ]
+                    ])
+                },
+                {
+                    # any mon ip could also contain a manager, we simply try to scrape all
+                    job_name = "ceph-mgrs"
+                    static_configs = [
+                        for mon in local.ceph_mon_hosts : {
+                            targets = [ "${mon}:9283" ]
+                            labels = {
+                                "optional" = true
                             }
-                        ]
-                    },
-                    {
-                        # any mon ip could also contain a manager, we simply try to scrape all
-                        job_name = "cluster-proxy"
-                        static_configs = [
-                            {
-                                targets = [ "${local.cluster_vars.pve_haproxy_floating_ip_internal}:8405" ]
-                            }
-                        ]
-                    }
-                ]
-            }
+                        }
+                    ]
+                },
+                {
+                    # any mon ip could also contain a manager, we simply try to scrape all
+                    job_name = "cluster-proxy"
+                    static_configs = [
+                        {
+                            targets = [ "${local.cluster_vars.pve_haproxy_floating_ip_internal}:8405" ]
+                        }
+                    ]
+                }
+            ], 
+            var.extra_scrape_configs,
+            var.monitor_proxmox_cluster && var.graphite_exporter_port != null ? [
+                {
+                    job_name = "pve-metrics"
+                    dns_sd_configs = [
+                        {
+                            names = [ "graphite-exporter-headless.pve-cloud-monitoring-master.svc.cluster.local" ]
+                            type = "A"
+                            port = 9108
+                        }
+                    ]
+                },
+            ] : []]
+            )
         }
-    }) : "{}",
-    var.monitor_proxmox_cluster && var.graphite_exporter_port != null ? yamlencode({
-        prometheus = {
-            prometheusSpec = {
-                additionalScrapeConfigs = [
-                    {
-                        job_name = "pve-metrics"
-                        dns_sd_configs = [
-                            {
-                                names = [ "graphite-exporter-headless.pve-cloud-monitoring-master.svc.cluster.local" ]
-                                type = "A"
-                                port = 9108
-                            }
-                        ]
-                    },
-                ]
-            }
-        }
-    }) : "{}",
-  ]
+    }
+  }) : "{}"
+  
 }
 
 output "rules" {
