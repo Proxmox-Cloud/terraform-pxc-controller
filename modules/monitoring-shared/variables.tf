@@ -1,6 +1,6 @@
-variable "alertmanager_host" {
+variable "namespace" {
   type = string
-  description = "Host to expose this stacks alertmanager under. This is needed for the master monitoring stack to bundle and discover alerts."
+  description = "The namespace of the monitoring stack."
 }
 
 variable "monitor_proxmox_cluster" {
@@ -11,18 +11,20 @@ variable "monitor_proxmox_cluster" {
 
 variable "graphite_exporter_port" {
   type = number
-  description = "Port on haproxy to send proxmox metrics to. Only works with monitor_proxmox_cluster enabled."
+  description = "Port on haproxy to send proxmox metrics to. Needs monitor_proxmox_cluster to be set to true."
   default = null
 }
 
 variable "optional_scrape_pve_hosts" {
   type = list(string)
   default = []
+  description = "Marks certain proxmox hosts as optional, raising no alarm when they are down."
 }
 
 variable "enable_temperature_rules" {
   type = bool
   default = false
+  description = "Enables monitoring for temp zones reported by the node exporter installed on pve hosts. Requires monitor_proxmox_cluster to be set to true."
 }
 
 variable "cpu_temperature_warn" {
@@ -39,3 +41,4 @@ variable "disk_temperature_warn" {
   type = number
   default = 50
 }
+

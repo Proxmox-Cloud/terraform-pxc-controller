@@ -22,7 +22,7 @@ variable "e2e_kubespray_inv" {
 }
 
 provider "pxc" {
-  kubespray_inv = var.e2e_kubespray_inv
+  inventory = var.e2e_kubespray_inv
 }
 
 module "controller" {
@@ -97,6 +97,16 @@ resource "kubernetes_manifest" "moto_service" {
 
   YAML
   )
+}
+
+# test age secret
+resource "pxc_cloud_age_secret" "test" {
+  secret_name = "age-test"
+  b64_age_data = "YWdlLWVuY3J5cHRpb24ub3JnL3YxCi0+IHNzaC1lZDI1NTE5IDduUjFPUSBIRWRFMWV4OEFEUkpYb3dYQkdJdFhRMkg3eTBNRE5OVFlRMXZiMlRwSFFvCnd4ZytPbFFZUWdmaXlpRlh4eEdQNVJhSGtHQTlJcGkyU2hOTlZnYjlyN00KLS0tIGFnMXM3Z3F6d29JSHQ0L1R5NFVwRFJiQnJXT0hHS01wNjJVRWRrTEtHbUEKbeE1QaFmvnKPZQd3zNkGq8z5J/r6r97jFmrAVGb5YklwLdbtg3xFiZA5LiigWAoLt/mqfLo="
+}
+
+output "age_out" {
+  value = jsondecode(pxc_cloud_age_secret.test.plain_data)
 }
 
 # data "pxc_cloud_vms" "test" {

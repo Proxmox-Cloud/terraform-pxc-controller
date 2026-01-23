@@ -14,7 +14,6 @@ resource "pxc_gotify_app" "client_app" {
   allow_insecure = var.insecure_tls
 }
 
-
 # converts alertmanager receiver hook format to gotify post
 resource "kubernetes_deployment" "alertmanager_gotify_bridge" {
   metadata {
