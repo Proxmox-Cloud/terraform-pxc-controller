@@ -108,21 +108,3 @@ resource "pxc_cloud_age_secret" "test" {
 output "age_out" {
   value = jsondecode(pxc_cloud_age_secret.test.plain_data)
 }
-
-# data "pxc_cloud_vms" "test" {
-# }
-
-# output "vms" {
-#   value = jsondecode(data.pxc_cloud_vms.test.vms_json)
-# }
-
-# resource "pxc_gotify_app" "test" {
-#   gotify_host = "gotify.testing.tobias-huebner.tech"
-#   gotify_admin_pw = "7xor0d]3#*U$bcNh"
-#   app_name = "nogtest"
-#   allow_insecure = true
-# }
-
-# output "gotify_app_token" {
-#   value = pxc_gotify_app.test.app_token
-# }

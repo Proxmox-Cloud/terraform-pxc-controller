@@ -42,3 +42,7 @@ variable "disk_temperature_warn" {
   default = 50
 }
 
+variable "extra_scrape_configs" {
+  type = list(any)
+  default = []
+}

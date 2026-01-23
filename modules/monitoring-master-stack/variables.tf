@@ -8,21 +8,6 @@ variable "graphite_exporter_port" {
   default = null
 }
 
-variable "awx_user" {
-  type = string
-  default = null
-}
-
-variable "awx_pass" {
-  type = string
-  default = null
-}
-
-variable "awx_namespace" {
-  type = string
-  default = "awx"
-}
-
 variable "enable_temperature_rules" {
   type = bool
   default = false

@@ -10,6 +10,7 @@ module "mon_shared" {
   monitor_proxmox_cluster = true
   graphite_exporter_port = var.graphite_exporter_port
   optional_scrape_pve_hosts = var.optional_scrape_pve_hosts
+  extra_scrape_configs = var.extra_scrape_configs
 
   enable_temperature_rules = var.enable_temperature_rules
   cpu_temperature_warn = var.cpu_temperature_warn
@@ -33,67 +34,12 @@ resource "helm_release" "kube_prom_stack" {
 
   version = "72.9.1"
 
-  values = concat(module.mon_shared.scrape_configs, [
+  values = [
+    module.mon_shared.scrape_config,
     module.mon_shared.rules,
-    # scrape configs for all lxcs / vms that expose systemd prometheus exporter
-    yamlencode({
-      prometheus = {
-        prometheusSpec = {
-          # conditional awx scrape target
-          additionalScrapeConfigs = concat(var.awx_user == null || var.awx_pass == null ? [] :
-            [
-              {
-                job_name = "awx-metrics"
-                metrics_path = "/api/v2/metrics"
-                basic_auth = {
-                  username = var.awx_user
-                  password = var.awx_pass
-                }
-                # lower intervals cause duplicate entry errors in prometheus. this is a bug in awx https://github.com/ansible/awx/issues/15179
-                # todo: lower / remove interval when fixxed
-                scrape_interval = "5m"
-                scheme = "http"
-                static_configs = [
-                  {
-                    targets = [
-                      "awx-service.${var.awx_namespace}.svc.cluster.local:80"
-                    ]
-                  }
-                ]
-              }
-            ],
-          var.extra_scrape_configs
-          )
-        }
-      }
-    }),
     # additional master stack based rules
     yamlencode({
-      additionalPrometheusRulesMap = merge(var.awx_user == null || var.awx_pass == null ? {} :
-        {
-        "awx-rules" = {
-          groups = [
-            {
-              name = "awx"
-              rules = [
-                {
-                  alert = "awx job failed"
-                  "for" = "1m"
-                  expr = "awx_status_total{status=\"failed\"} > 0"
-                  labels = {
-                    severity = "critical"
-                  }
-                  annotations = {
-                    summary = "One or more AWX jobs have failed."
-                    description = "A total of {{ $value }} jobs have failed."
-                  }
-                }
-              ]
-            }
-          ]
-        }
-      },
-      var.extra_alert_rules)
+      additionalPrometheusRulesMap = var.extra_alert_rules
     }),
     # alertmanager settings and notification piping
     yamlencode({
@@ -139,7 +85,7 @@ resource "helm_release" "kube_prom_stack" {
         }
       }
     })
-  ])
+  ]
 }
 
 output "namespace" {

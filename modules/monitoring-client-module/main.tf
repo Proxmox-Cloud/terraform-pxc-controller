@@ -61,7 +61,8 @@ resource "helm_release" "kube_prom_stack" {
 
   version = "72.9.1"
 
-  values = concat(module.mon_shared.scrape_configs, [
+  values = [
+    module.mon_shared.scrape_config,
     module.mon_shared.rules,
     yamlencode({
       alertmanager = {
@@ -123,5 +124,5 @@ resource "helm_release" "kube_prom_stack" {
         }
       }
     })
-  ])
+  ]
 }
