@@ -1,7 +1,8 @@
 resource "kubernetes_deployment" "graphite_exporter" {
+  count = var.graphite_exporter_port != null && var.monitor_proxmox_cluster ? 1 : 0
   metadata {
     name      = "graphite-exporter"
-    namespace = helm_release.kube_prom_stack.namespace
+    namespace = var.namespace
     labels = {
       app = "graphite-exporter"
     }
@@ -40,9 +41,10 @@ resource "kubernetes_deployment" "graphite_exporter" {
 }
 
 resource "kubernetes_service" "graphite_exporter_nodeport" {
+  count = var.graphite_exporter_port != null && var.monitor_proxmox_cluster ? 1 : 0
   metadata {
     name      = "graphite-exporter-nodeport"
-    namespace = helm_release.kube_prom_stack.namespace
+    namespace = var.namespace
   }
 
   spec {
@@ -64,9 +66,10 @@ resource "kubernetes_service" "graphite_exporter_nodeport" {
 
 
 resource "kubernetes_service" "graphite_exporter" {
+  count = var.graphite_exporter_port != null && var.monitor_proxmox_cluster ? 1 : 0
   metadata {
     name      = "graphite-exporter-headless"
-    namespace = helm_release.kube_prom_stack.namespace
+    namespace = var.namespace
   }
 
   spec {
@@ -78,4 +81,11 @@ resource "kubernetes_service" "graphite_exporter" {
 
     type = "ClusterIP"
   }
+}
+
+resource "pxc_pve_graphite_exporter" "exporter" {
+  count = var.graphite_exporter_port == null ? 0 : 1
+  exporter_name = "graphite-${data.pxc_cloud_self.self.stack_name}"
+  server = local.cluster_vars.pve_haproxy_floating_ip_internal
+  port = var.graphite_exporter_port
 }

@@ -136,6 +136,9 @@ def controller_scenario(
 ):
     scenario_name = "controller"
 
+    # age secret env var
+    os.environ["CLOUD_AGE_SSH_KEY_FILE"] = f"{os.getcwd()}/tests/id_ed25519"
+
     ctlr_vers, tdd_ip = get_tdd_version("pve-cloud-controller")
 
     if ctlr_vers:

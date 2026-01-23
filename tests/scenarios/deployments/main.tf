@@ -16,7 +16,7 @@ variable "e2e_kubespray_inv" {
 }
 
 provider "pxc" {
-  kubespray_inv = var.e2e_kubespray_inv
+  inventory = var.e2e_kubespray_inv
 }
 
 resource "helm_release" "nginx_test" {
@@ -100,6 +100,8 @@ module "tf_monitoring" {
   # for testing
   insecure_tls = true
   alertmanger_e2e_ingress = true
+
+  graphite_exporter_port = 9109
 }
 
 # expose karma directly
@@ -154,4 +156,13 @@ resource "helm_release" "nginx_test_proto" {
         ingressClassName: nginx
     YAML
   ]
+}
+
+
+data "pxc_cloud_secret" "test_age" {
+  secret_name = "age-test"
+}
+
+output "age_out" {
+  value = jsondecode(data.pxc_cloud_secret.test_age.secret_data)
 }
