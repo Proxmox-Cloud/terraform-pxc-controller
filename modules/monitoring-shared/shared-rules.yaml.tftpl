@@ -13,10 +13,10 @@ additionalPrometheusRulesMap:
             for: "10m"
             expr: '100 * (count by (cluster, job, namespace, service) (up{optional!="true"} == 0) / count by (cluster, job, namespace, service) (up{optional!="true"})) > 10'
             labels:
-              severity: warning
+              severity: critical
             annotations:
-              summary: "One or more targets are unreachable."
-              description: '{{ printf "%.4g" $value }}% of the {{ $labels.job }}/{{ $labels.service }} targets in {{ $labels.namespace }} namespace are down.'
+              summary: "More than 10 percent of targets are unreachable."
+              description: '{{ printf "%.4g" $value }}% of the {{ $labels.job }} targets are down.'
   
   # general metrics of pve hosts and vms provided by systemd and node exporter
   pve-cluster-rules:

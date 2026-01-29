@@ -96,12 +96,18 @@ resource "helm_release" "kube_prom_stack" {
             group_wait = "5s" # send almost instantly
             group_interval = "10s"
             repeat_interval = "999h" # alerts are never resend, keep gotify clean
-            receiver = "gotify"
+            receiver = "null"
             routes = [
               {
                 receiver = "null"
                 matchers = [
                   "alertname = \"Watchdog\"" # dont send default watchdog alert => pipe to null receiver
+                ]
+              },
+              {
+                receiver = "gotify"
+                matchers = [
+                  "severity = \"critical\"" # only send critical errors to gotify, warnings are handled by looking at the karma ui
                 ]
               }
             ]
