@@ -21,3 +21,10 @@ provider "helm" {
     cluster_ca_certificate = base64decode(local.kubeconfig.clusters[0].cluster.certificate-authority-data) 
   }
 }
+
+# for reading worker ips for metrics exporter on pve
+provider "dns" {
+  update {
+    server = local.test_pve_conf["pve_test_cloud_inv"]["bind_master_ip"]
+  }
+}

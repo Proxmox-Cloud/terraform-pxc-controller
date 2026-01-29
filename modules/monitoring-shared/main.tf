@@ -110,7 +110,7 @@ output "scrape_config" {
                 }
             ], 
             var.extra_scrape_configs,
-            var.monitor_proxmox_cluster && var.graphite_exporter_port != null ? [
+            var.monitor_proxmox_cluster ? [
                 {
                     job_name = "pve-metrics"
                     dns_sd_configs = [

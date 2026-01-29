@@ -8,7 +8,6 @@ module "mon_shared" {
   source = "../monitoring-shared"
   namespace = kubernetes_namespace.mon_ns.metadata[0].name
   monitor_proxmox_cluster = true
-  graphite_exporter_port = var.graphite_exporter_port
   optional_scrape_pve_hosts = var.optional_scrape_pve_hosts
   extra_scrape_configs = var.extra_scrape_configs
 

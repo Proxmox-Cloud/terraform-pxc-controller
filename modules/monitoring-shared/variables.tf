@@ -9,11 +9,7 @@ variable "monitor_proxmox_cluster" {
   description = "When set to true the underlying proxmox cluster will be monitored by this stack (inserts targets and rules)."
 }
 
-variable "graphite_exporter_port" {
-  type = number
-  description = "Port on haproxy to send proxmox metrics to. Needs monitor_proxmox_cluster to be set to true."
-  default = null
-}
+
 
 variable "optional_scrape_pve_hosts" {
   type = list(string)

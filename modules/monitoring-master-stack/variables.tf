@@ -2,12 +2,6 @@ variable "ingress_apex" {
   type = string
 }
 
-variable "graphite_exporter_port" {
-  type = number
-  description = "Port on haproxy to send proxmox metrics to."
-  default = null
-}
-
 variable "enable_temperature_rules" {
   type = bool
   default = false
