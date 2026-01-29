@@ -1,5 +1,5 @@
 resource "kubernetes_deployment" "graphite_exporter" {
-  count = var.graphite_exporter_port != null && var.monitor_proxmox_cluster ? 1 : 0
+  count = var.monitor_proxmox_cluster ? 1 : 0
   metadata {
     name      = "graphite-exporter"
     namespace = var.namespace
@@ -41,7 +41,7 @@ resource "kubernetes_deployment" "graphite_exporter" {
 }
 
 resource "kubernetes_service" "graphite_exporter_nodeport" {
-  count = var.graphite_exporter_port != null && var.monitor_proxmox_cluster ? 1 : 0
+  count = var.monitor_proxmox_cluster ? 1 : 0
   metadata {
     name      = "graphite-exporter-nodeport"
     namespace = var.namespace
@@ -54,7 +54,7 @@ resource "kubernetes_service" "graphite_exporter_nodeport" {
 
     port {
       name = "graphite"
-      protocol    = "TCP"
+      protocol    = "UDP" # udp target in proxmox ui also
       port        = 9109
       target_port = 9109
       node_port   = 30109
@@ -66,7 +66,7 @@ resource "kubernetes_service" "graphite_exporter_nodeport" {
 
 
 resource "kubernetes_service" "graphite_exporter" {
-  count = var.graphite_exporter_port != null && var.monitor_proxmox_cluster ? 1 : 0
+  count = var.monitor_proxmox_cluster ? 1 : 0
   metadata {
     name      = "graphite-exporter-headless"
     namespace = var.namespace
@@ -83,9 +83,15 @@ resource "kubernetes_service" "graphite_exporter" {
   }
 }
 
+
+# find worker node, any is fine for udp metrics target
+data "dns_a_record_set" "workers" {
+  host = "workers-${data.pxc_cloud_self.self.stack_name}.${local.cluster_vars.pve_cloud_domain}"
+}
+
 resource "pxc_pve_graphite_exporter" "exporter" {
-  count = var.graphite_exporter_port == null ? 0 : 1
-  exporter_name = "graphite-${data.pxc_cloud_self.self.stack_name}"
-  server = local.cluster_vars.pve_haproxy_floating_ip_internal
-  port = var.graphite_exporter_port
+  count = var.monitor_proxmox_cluster ? 1 : 0
+  exporter_name = data.pxc_cloud_self.self.stack_name
+  server = data.dns_a_record_set.workers.addrs[0]
+  port = 30109 # same as nodeport
 }

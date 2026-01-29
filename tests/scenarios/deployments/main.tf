@@ -100,8 +100,6 @@ module "tf_monitoring" {
   # for testing
   insecure_tls = true
   alertmanger_e2e_ingress = true
-
-  graphite_exporter_port = 9109
 }
 
 # expose karma directly
