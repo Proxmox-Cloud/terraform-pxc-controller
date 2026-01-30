@@ -9,7 +9,6 @@ variable "monitor_proxmox_cluster" {
   description = "When set to true the underlying proxmox cluster will be monitored by this stack (inserts targets and rules)."
 }
 
-
 variable "optional_scrape_pve_hosts" {
   type = list(string)
   default = []
@@ -33,4 +32,10 @@ variable "thermal_temperature_warn" {
 variable "disk_temperature_warn" {
   type = number
   default = 50
+}
+
+variable "insecure_tls" {
+  type = bool
+  default = false
+  description = "For testing purposes."
 }
