@@ -16,5 +16,9 @@ terraform {
       source = "hashicorp/helm"
       version = "3.1.1"
     }
+    pxc = {
+      source = "Proxmox-Cloud/pxc"
+      version = "~>0.2.2" # pxc sed ci - DONT REMOVE COMMENT!
+    }
   }
 }
