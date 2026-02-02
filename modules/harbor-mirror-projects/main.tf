@@ -63,6 +63,7 @@ resource "harbor_robot_account" "cloud_mirror" {
     kind = "project"
     namespace = harbor_project.github_cache.name
     access {
+      resource = "repository"
       action = "pull"
       effect = "allow"
     }
@@ -72,6 +73,7 @@ resource "harbor_robot_account" "cloud_mirror" {
     kind = "project"
     namespace = harbor_project.aws_ecr_cache.name
     access {
+      resource = "repository"
       action = "pull"
       effect = "allow"
     }
@@ -81,6 +83,7 @@ resource "harbor_robot_account" "cloud_mirror" {
     kind = "project"
     namespace = harbor_project.quay_cache.name
     access {
+      resource = "repository"
       action = "pull"
       effect = "allow"
     }
@@ -90,6 +93,7 @@ resource "harbor_robot_account" "cloud_mirror" {
     kind = "project"
     namespace = harbor_project.docker_hub_cache.name
     access {
+      resource = "repository"
       action = "pull"
       effect = "allow"
     }
@@ -99,6 +103,7 @@ resource "harbor_robot_account" "cloud_mirror" {
     kind = "project"
     namespace = harbor_project.cloud_mirror.name
     access {
+      resource = "repository"
       action = "pull"
       effect = "allow"
     }
@@ -107,7 +112,7 @@ resource "harbor_robot_account" "cloud_mirror" {
 
 # create pxc cloud secret from it
 resource "pxc_cloud_secret" "cloud_mirror" {
-  secret_name = "${var.harbor_host}-mirror"
+  secret_name = "${local.harbor_host}-mirror"
   secret_data = jsonencode({
     full_name = harbor_robot_account.cloud_mirror.full_name
     secret = harbor_robot_account.cloud_mirror.secret
@@ -115,7 +120,7 @@ resource "pxc_cloud_secret" "cloud_mirror" {
     dockerconfig = <<-CFG
       {
               "auths": {
-                      "${var.harbor_host}": {
+                      "${local.harbor_host}": {
                               "auth": "${base64encode("${harbor_robot_account.cloud_mirror.full_name}:${harbor_robot_account.cloud_mirror.secret}")}"
                       }
               }
@@ -134,10 +139,12 @@ resource "harbor_robot_account" "cloud_admin" {
     kind = "project"
     namespace = "*"
     access {
+      resource = "repository"
       action = "pull"
       effect = "allow"
     }
     access {
+      resource = "repository"
       action = "push"
       effect = "allow"
     }
@@ -146,7 +153,7 @@ resource "harbor_robot_account" "cloud_admin" {
 
 
 resource "pxc_cloud_secret" "cloud_admin" {
-  secret_name = "${var.harbor_host}-admin"
+  secret_name = "${local.harbor_host}-admin"
   secret_data = jsonencode({
     full_name = harbor_robot_account.cloud_admin.full_name
     secret = harbor_robot_account.cloud_admin.secret
@@ -154,7 +161,7 @@ resource "pxc_cloud_secret" "cloud_admin" {
     dockerconfig = <<-CFG
       {
               "auths": {
-                      "${var.harbor_host}": {
+                      "${local.harbor_host}": {
                               "auth": "${base64encode("${harbor_robot_account.cloud_admin.full_name}:${harbor_robot_account.cloud_admin.secret}")}"
                       }
               }
