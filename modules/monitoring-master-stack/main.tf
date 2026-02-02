@@ -4,6 +4,10 @@ resource "kubernetes_namespace" "mon_ns" {
   }
 }
 
+output "namespace" {
+  value = kubernetes_namespace.mon_ns.metadata[0].name
+}
+
 module "mon_shared" {
   source = "../monitoring-shared"
   namespace = kubernetes_namespace.mon_ns.metadata[0].name
@@ -91,8 +95,4 @@ resource "helm_release" "kube_prom_stack" {
       }
     })
   ]
-}
-
-output "namespace" {
-  value = helm_release.kube_prom_stack.namespace
 }

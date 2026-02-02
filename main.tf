@@ -62,25 +62,25 @@ resource "kubernetes_secret" "mirror_pull_secret" {
   type = "kubernetes.io/dockerconfigjson"
 }
 
-resource "kubernetes_manifest" "watcher" {
+resource "kubernetes_manifest" "ns_watcher" {
   manifest = yamldecode(<<-YAML
     apiVersion: apps/v1
     kind: Deployment
     metadata:
-      name: pve-cloud-watcher
+      name: pve-cloud-ns-watcher
       namespace: ${kubernetes_namespace.pve_cloud_controller.metadata[0].name}
       labels:
-        app.kubernetes.io/name: pve-cloud-watcher
+        app.kubernetes.io/name: pve-cloud-ns-watcher
         app.kubernetes.io/version: '${local.cloud_controller_version}'
     spec:
       replicas: 1
       selector:
         matchLabels:
-          app.kubernetes.io/name: pve-cloud-watcher
+          app.kubernetes.io/name: pve-cloud-ns-watcher
       template:
         metadata:
           labels:
-            app.kubernetes.io/name: pve-cloud-watcher
+            app.kubernetes.io/name: pve-cloud-ns-watcher
             app.kubernetes.io/version: '${local.cloud_controller_version}'
         spec:
           priorityClassName: system-cluster-critical
@@ -101,11 +101,50 @@ resource "kubernetes_manifest" "watcher" {
                 - name: HARBOR_MIRROR_PULL_SECRET_NAME
                   value: 'mirror-pull-secret'
       %{ endif }
-              command: [ "watcher" ]
+              command: [ "ns-watcher" ]
   YAML
   )
 }
 
+
+resource "kubernetes_manifest" "pod_watcher" {
+  # comment in on release
+  # count = var.harbor_mirror_host != null && var.harbor_mirror_auth != null ? 1 : 0
+  manifest = yamldecode(<<-YAML
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: pve-cloud-pod-watcher
+      namespace: ${kubernetes_namespace.pve_cloud_controller.metadata[0].name}
+      labels:
+        app.kubernetes.io/name: pve-cloud-pod-watcher
+        app.kubernetes.io/version: '${local.cloud_controller_version}'
+    spec:
+      replicas: 1
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: pve-cloud-pod-watcher
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: pve-cloud-pod-watcher
+            app.kubernetes.io/version: '${local.cloud_controller_version}'
+        spec:
+          containers:
+            - name: watcher
+              image: "${local.cloud_controller_image}:${local.cloud_controller_version}"
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: EXCLUDE_MIRROR_NAMESPACES
+                  value: '${join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))}'
+                - name: HARBOR_MIRROR_HOST
+                  value: '${var.harbor_mirror_host}'
+                - name: HARBOR_MIRROR_PULL_SECRET_NAME
+                  value: 'mirror-pull-secret'
+              command: [ "pod-watcher" ]
+  YAML
+  )
+}
 
 resource "kubernetes_config_map" "cluster_cert_entries" {
   metadata {

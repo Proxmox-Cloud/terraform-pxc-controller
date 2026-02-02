@@ -22,6 +22,7 @@ variable "adm_controller_replicas" {
   default = 2
 }
 
+# todo: replace with secret lookup
 variable "harbor_mirror_host" {
   type = string
   default = null
