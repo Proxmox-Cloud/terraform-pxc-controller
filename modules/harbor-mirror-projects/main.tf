@@ -8,6 +8,7 @@ resource "harbor_registry" "github_cache" {
 resource "harbor_project" "github_cache" {
   name        = "github-cache"
   registry_id = harbor_registry.github_cache.registry_id
+  force_destroy = true
 }
 
 # aws
@@ -20,6 +21,7 @@ resource "harbor_registry" "aws_ecr_cache" {
 resource "harbor_project" "aws_ecr_cache" {
   name        = "aws-ecr-cache"
   registry_id = harbor_registry.aws_ecr_cache.registry_id
+  force_destroy = true
 }
 
 # quay
@@ -32,6 +34,7 @@ resource "harbor_registry" "quay_cache" {
 resource "harbor_project" "quay_cache" {
   name        = "quay-cache"
   registry_id = harbor_registry.quay_cache.registry_id
+  force_destroy = true
 }
 
 # docker hub
@@ -44,6 +47,7 @@ resource "harbor_registry" "docker_hub_cache" {
 resource "harbor_project" "docker_hub_cache" {
   name        = "docker-hub-cache"
   registry_id = harbor_registry.docker_hub_cache.registry_id
+  force_destroy = true
 }
 
 # full mirror repository, here our proxmox cloud controller will via harbor
