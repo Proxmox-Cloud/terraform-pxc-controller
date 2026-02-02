@@ -26,13 +26,7 @@ variable "adm_controller_replicas" {
 variable "harbor_mirror_host" {
   type = string
   default = null
-  description = "If set the cloud controller will use admission controller patches to use the specified harbor mirror."
-}
-
-variable "harbor_mirror_auth" {
-  type = string
-  default = null
-  description = "Dockerconfig that will created and assigned to the pods."
+  description = "If set the cloud controller will use admission controller patches to use the specified harbor mirror. The mirror has to have the harbor-mirror-projects submodule initialized with."
 }
 
 variable "exclude_mirror_namespaces" {

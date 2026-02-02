@@ -41,23 +41,31 @@ locals {
   ]
 }
 
+# try to fetch mirror credentials if available
+data "pxc_cloud_secret" "harbor_mirror" {
+  count = var.harbor_mirror_host != null ? 1 : 0
+  secret_name = "${var.harbor_mirror_host}-mirror"
+}
+
+data "pxc_cloud_secret" "harbor_admin" {
+  count = var.harbor_mirror_host != null ? 1 : 0
+  secret_name = "${var.harbor_mirror_host}-admin"
+}
+
+locals {
+  harbor_mirror_auth = data.pxc_cloud_secret.harbor_mirror.secret_data != "" ? jsondecode(data.pxc_cloud_secret.harbor_mirror.secret_data) : null
+  harbor_admin_auth = data.pxc_cloud_secret.harbor_admin.secret_data != "" ? jsondecode(data.pxc_cloud_secret.harbor_admin.secret_data) : null
+}
+
 # optionally create mirror pull secret
 resource "kubernetes_secret" "mirror_pull_secret" {
-  count = var.harbor_mirror_host != null && var.harbor_mirror_auth != null ? 1 : 0
+  count = var.harbor_mirror_host != null && local.harbor_mirror_auth != null ? 1 : 0
   metadata {
     namespace = kubernetes_namespace.pve_cloud_controller.metadata[0].name
     name = "mirror-pull-secret"
   }
   data = {
-    ".dockerconfigjson" = <<-EOT
-        {
-                "auths": {
-                        "${var.harbor_mirror_host}": {
-                                "auth": "${var.harbor_mirror_auth}"
-                        }
-                }
-        }
-    EOT
+    ".dockerconfigjson" = local.harbor_mirror_auth.dockerconfig
   }
   type = "kubernetes.io/dockerconfigjson"
 }
@@ -95,7 +103,7 @@ resource "kubernetes_manifest" "ns_watcher" {
                   value: '${local.pg_conn_str}'
                 - name: EXCLUDE_TLS_NAMESPACES
                   value: '${join(",", concat(local.default_exclude_tls_namespaces, var.exclude_tls_namespaces))}'
-      %{ if var.harbor_mirror_host != null && var.harbor_mirror_auth != null }
+      %{ if var.harbor_mirror_host != null && local.harbor_mirror_auth != null }
                 - name: HARBOR_MIRROR_HOST
                   value: '${var.harbor_mirror_host}'
                 - name: HARBOR_MIRROR_PULL_SECRET_NAME
@@ -107,9 +115,12 @@ resource "kubernetes_manifest" "ns_watcher" {
 }
 
 
+
+
+
 resource "kubernetes_manifest" "pod_watcher" {
   # comment in on release
-  # count = var.harbor_mirror_host != null && var.harbor_mirror_auth != null ? 1 : 0
+  count = var.harbor_mirror_host != null && local.harbor_admin_auth != null ? 1 : 0
   manifest = yamldecode(<<-YAML
     apiVersion: apps/v1
     kind: Deployment
@@ -137,14 +148,17 @@ resource "kubernetes_manifest" "pod_watcher" {
               env:
                 - name: EXCLUDE_MIRROR_NAMESPACES
                   value: '${join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))}'
+                - name: HARBOR_ADMIN_USER
+                  value: '${local.harbor_admin_auth.full_name}'
+                - name: HARBOR_ADMIN_PASSWORD
+                  value:  '${local.harbor_admin_auth.secret}'
                 - name: HARBOR_MIRROR_HOST
                   value: '${var.harbor_mirror_host}'
-                - name: HARBOR_MIRROR_PULL_SECRET_NAME
-                  value: 'mirror-pull-secret'
               command: [ "pod-watcher" ]
   YAML
   )
 }
+
 
 resource "kubernetes_config_map" "cluster_cert_entries" {
   metadata {
@@ -209,7 +223,7 @@ resource "kubernetes_manifest" "adm_deployment" {
                   value: '${local.pg_conn_str}'
                 - name: EXCLUDE_MIRROR_NAMESPACES
                   value: '${join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))}'
-      %{ if var.harbor_mirror_host != null && var.harbor_mirror_auth != null }
+      %{ if var.harbor_mirror_host != null && local.harbor_mirror_auth != null }
                 - name: HARBOR_MIRROR_HOST
                   value: '${var.harbor_mirror_host}'
                 - name: HARBOR_MIRROR_PULL_SECRET_NAME
@@ -407,7 +421,7 @@ resource "kubernetes_manifest" "cron" {
                       value: '${local.k8s_stack_fqdn}'
                     - name: PG_CONN_STR
                       value: '${local.pg_conn_str}'
-      %{ if var.harbor_mirror_host != null && var.harbor_mirror_auth != null }
+      %{ if var.harbor_mirror_host != null && local.harbor_mirror_auth != null }
                     - name: HARBOR_MIRROR_HOST
                       value: '${var.harbor_mirror_host}'
                     - name: HARBOR_MIRROR_PULL_SECRET_NAME

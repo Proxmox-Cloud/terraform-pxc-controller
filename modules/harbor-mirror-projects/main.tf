@@ -53,9 +53,9 @@ resource "harbor_project" "cloud_mirror" {
 }
 
 # pull access to caches and mirror repositories
-resource "harbor_robot_account" "account" {
-  name        = var.scope_name
-  description = "robot account for scope ${var.scope_name}"
+resource "harbor_robot_account" "cloud_mirror" {
+  name        = "cloud-mirror-robot"
+  description = "robot account for cache / mirror pulls"
   level       = "system"
 
   # allow pull
@@ -104,3 +104,62 @@ resource "harbor_robot_account" "account" {
     }
   }
 }
+
+# create pxc cloud secret from it
+resource "pxc_cloud_secret" "cloud_mirror" {
+  secret_name = "${var.harbor_host}-mirror"
+  secret_data = jsonencode({
+    full_name = harbor_robot_account.cloud_mirror.full_name
+    secret = harbor_robot_account.cloud_mirror.secret
+    auth_b64 = base64encode("${harbor_robot_account.cloud_mirror.full_name}:${harbor_robot_account.cloud_mirror.secret}")
+    dockerconfig = <<-CFG
+      {
+              "auths": {
+                      "${var.harbor_host}": {
+                              "auth": "${base64encode("${harbor_robot_account.cloud_mirror.full_name}:${harbor_robot_account.cloud_mirror.secret}")}"
+                      }
+              }
+      }
+    CFG
+  })
+}
+
+# generic cloud admin robot account
+resource "harbor_robot_account" "cloud_admin" {
+  name        = "cloud-admin-robot"
+  description = "cloud admin robot account"
+  level       = "system"
+
+  permissions {
+    kind = "project"
+    namespace = "*"
+    access {
+      action = "pull"
+      effect = "allow"
+    }
+    access {
+      action = "push"
+      effect = "allow"
+    }
+  }
+}
+
+
+resource "pxc_cloud_secret" "cloud_admin" {
+  secret_name = "${var.harbor_host}-admin"
+  secret_data = jsonencode({
+    full_name = harbor_robot_account.cloud_admin.full_name
+    secret = harbor_robot_account.cloud_admin.secret
+    auth_b64 = base64encode("${harbor_robot_account.cloud_admin.full_name}:${harbor_robot_account.cloud_admin.secret}")
+    dockerconfig = <<-CFG
+      {
+              "auths": {
+                      "${var.harbor_host}": {
+                              "auth": "${base64encode("${harbor_robot_account.cloud_admin.full_name}:${harbor_robot_account.cloud_admin.secret}")}"
+                      }
+              }
+      }
+    CFG
+  })
+}
+
