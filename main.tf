@@ -53,8 +53,8 @@ data "pxc_cloud_secret" "harbor_admin" {
 }
 
 locals {
-  harbor_mirror_auth = data.pxc_cloud_secret.harbor_mirror.secret_data != "" ? jsondecode(data.pxc_cloud_secret.harbor_mirror.secret_data) : null
-  harbor_admin_auth = data.pxc_cloud_secret.harbor_admin.secret_data != "" ? jsondecode(data.pxc_cloud_secret.harbor_admin.secret_data) : null
+  harbor_mirror_auth = var.harbor_mirror_host != null && data.pxc_cloud_secret.harbor_mirror[0].secret_data != "" ? jsondecode(data.pxc_cloud_secret.harbor_mirror[0].secret_data) : null
+  harbor_admin_auth = var.harbor_mirror_host != null && data.pxc_cloud_secret.harbor_admin[0].secret_data != "" ? jsondecode(data.pxc_cloud_secret.harbor_admin[0].secret_data) : null
 }
 
 # optionally create mirror pull secret
