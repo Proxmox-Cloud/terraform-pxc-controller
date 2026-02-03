@@ -1,7 +1,7 @@
 # google
 resource "harbor_registry" "github_cache" {
   provider_name = "docker-registry"
-  name = "github ghcr"
+  name = "github ghcr cache"
   endpoint_url = "https://ghcr.io"
 }
 
@@ -14,7 +14,7 @@ resource "harbor_project" "github_cache" {
 # aws
 resource "harbor_registry" "aws_ecr_cache" {
   provider_name = "docker-registry"
-  name = "aws ecr"
+  name = "aws ecr cache"
   endpoint_url = "https://public.ecr.aws"
 }
 
@@ -27,7 +27,7 @@ resource "harbor_project" "aws_ecr_cache" {
 # quay
 resource "harbor_registry" "quay_cache" {
   provider_name = "docker-registry"
-  name = "quay"
+  name = "quay cache"
   endpoint_url = "https://quay.io"
 }
 
@@ -40,7 +40,7 @@ resource "harbor_project" "quay_cache" {
 # docker hub
 resource "harbor_registry" "docker_hub_cache" {
   provider_name = "docker-hub"
-  name = "docker hub"
+  name = "docker hub cache"
   endpoint_url = "https://hub.docker.com"
 }
 
