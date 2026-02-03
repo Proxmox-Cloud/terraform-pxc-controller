@@ -109,11 +109,6 @@ resource "kubernetes_manifest" "ns_watcher" {
                 # adm pod patch
                 - name: HARBOR_MIRROR_PULL_SECRET_NAME
                   value: 'mirror-pull-secret'
-                # skopeo check
-                - name: HARBOR_MIRROR_USER
-                  value: '${local.harbor_mirror_auth.full_name}'
-                - name: HARBOR_MIRROR_PASSWORD
-                  value:  '${local.harbor_mirror_auth.secret}'
       %{ endif }
               command: [ "ns-watcher" ]
   YAML
@@ -231,6 +226,11 @@ resource "kubernetes_manifest" "adm_deployment" {
                   value: '${var.harbor_mirror_host}'
                 - name: HARBOR_MIRROR_PULL_SECRET_NAME
                   value: 'mirror-pull-secret'
+                # skopeo check
+                - name: HARBOR_MIRROR_USER
+                  value: '${local.harbor_mirror_auth.full_name}'
+                - name: HARBOR_MIRROR_PASSWORD
+                  value:  '${local.harbor_mirror_auth.secret}'
       %{ endif }
                 - name: BIND_MASTER_IP
                   value: '${local.cluster_vars.bind_master_ip}'
