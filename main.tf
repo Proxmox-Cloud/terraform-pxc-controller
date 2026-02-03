@@ -295,6 +295,60 @@ resource "kubernetes_mutating_webhook_configuration" "adm_hook" {
     name = "pve-cloud-adm"
   }
 
+  webhook {
+    name = "sa.pve-cloud-adm.pve.cloud"
+
+    client_config {
+
+      service {
+
+        name      = "pve-cloud-adm"
+
+        namespace = kubernetes_namespace.pve_cloud_controller.metadata[0].name
+
+        path      = "/mutate-sa"
+
+        port      = 443
+
+      }
+
+      ca_bundle = tls_self_signed_cert.ca.cert_pem
+
+    }
+
+    rule {
+
+      api_groups   = [""]
+
+      api_versions = ["v1"]
+
+      operations   = ["CREATE"]
+
+      resources    = ["serviceaccounts"]
+
+    }
+
+    # hook patch for pods should not trigger for all namespaces
+    namespace_selector {
+
+      match_expressions {
+
+        key = "kubernetes.io/metadata.name"
+
+        operator = "NotIn"
+
+        values = concat(local.default_exclude_tls_namespaces, var.exclude_tls_namespaces, local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces)
+
+      }
+
+    }
+
+    admission_review_versions = ["v1"]
+
+    side_effects              = "None"
+
+    failure_policy            = "Fail"
+  }
 
   webhook {
     name = "pod.pve-cloud-adm.pve.cloud"
