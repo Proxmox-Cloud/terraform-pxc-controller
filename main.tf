@@ -106,16 +106,19 @@ resource "kubernetes_manifest" "ns_watcher" {
       %{ if var.harbor_mirror_host != null && local.harbor_mirror_auth != null }
                 - name: HARBOR_MIRROR_HOST
                   value: '${var.harbor_mirror_host}'
+                # adm pod patch
                 - name: HARBOR_MIRROR_PULL_SECRET_NAME
                   value: 'mirror-pull-secret'
+                # skopeo check
+                - name: HARBOR_MIRROR_USER
+                  value: '${local.harbor_mirror_auth.full_name}'
+                - name: HARBOR_MIRROR_PASSWORD
+                  value:  '${local.harbor_mirror_auth.secret}'
       %{ endif }
               command: [ "ns-watcher" ]
   YAML
   )
 }
-
-
-
 
 
 resource "kubernetes_manifest" "pod_watcher" {
