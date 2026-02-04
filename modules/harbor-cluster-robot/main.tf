@@ -30,7 +30,7 @@ output "robot_creds" {
     dockerconfig =  <<-CFG
       {
               "auths": {
-                      "${local.harbor_host}": {
+                      "${var.harbor_host}": {
                               "auth": "${base64encode("${harbor_robot_account.account.full_name}:${harbor_robot_account.account.secret}")}"
                       }
               }

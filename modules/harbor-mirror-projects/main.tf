@@ -116,7 +116,7 @@ resource "harbor_robot_account" "cloud_mirror" {
 
 # create pxc cloud secret from it
 resource "pxc_cloud_secret" "cloud_mirror" {
-  secret_name = "${local.harbor_host}-mirror"
+  secret_name = "${var.harbor_host}-mirror"
   secret_data = jsonencode({
     full_name = harbor_robot_account.cloud_mirror.full_name
     secret = harbor_robot_account.cloud_mirror.secret
@@ -124,7 +124,7 @@ resource "pxc_cloud_secret" "cloud_mirror" {
     dockerconfig = <<-CFG
       {
               "auths": {
-                      "${local.harbor_host}": {
+                      "${var.harbor_host}": {
                               "auth": "${base64encode("${harbor_robot_account.cloud_mirror.full_name}:${harbor_robot_account.cloud_mirror.secret}")}"
                       }
               }
@@ -157,7 +157,7 @@ resource "harbor_robot_account" "cloud_admin" {
 
 
 resource "pxc_cloud_secret" "cloud_admin" {
-  secret_name = "${local.harbor_host}-admin"
+  secret_name = "${var.harbor_host}-admin"
   secret_data = jsonencode({
     full_name = harbor_robot_account.cloud_admin.full_name
     secret = harbor_robot_account.cloud_admin.secret
@@ -165,7 +165,7 @@ resource "pxc_cloud_secret" "cloud_admin" {
     dockerconfig = <<-CFG
       {
               "auths": {
-                      "${local.harbor_host}": {
+                      "${var.harbor_host}": {
                               "auth": "${base64encode("${harbor_robot_account.cloud_admin.full_name}:${harbor_robot_account.cloud_admin.secret}")}"
                       }
               }

@@ -1,4 +1,3 @@
-variable "harbor_namespace" {
+variable "harbor_host" {
   type = string
-  default = "harbor"
 }

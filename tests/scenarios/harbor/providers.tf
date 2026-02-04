@@ -22,11 +22,29 @@ provider "helm" {
   }
 }
 
-# for reading worker ips for metrics exporter on pve
-provider "dns" {
-  update {
-    server = local.test_pve_conf["pve_test_cloud_inv"]["bind_master_ip"]
+# init harbor provider, this scenario only gets applied when the pve_test_k8s_tls_copy_* vars are set in test env
+# harbor itself already got conditionally deployed by the controller scenario
+
+data "kubernetes_secret" "harbor_creds" {
+  metadata {
+    name = "harbor-core"
+    namespace = "harbor"
   }
 }
 
-## 
+data "kubernetes_ingress_v1" "harbor_ingress" {
+  metadata {
+    name = "harbor-ingress"
+    namespace = "harbor"
+  }
+}
+
+locals {
+  harbor_host = data.kubernetes_ingress_v1.harbor_ingress.spec[0].rule[0].host
+}
+
+provider "harbor" {
+  url = "https://${local.harbor_host}"
+  username = "admin"
+  password = data.kubernetes_secret.harbor_creds.data["HARBOR_ADMIN_PASSWORD"]
+}

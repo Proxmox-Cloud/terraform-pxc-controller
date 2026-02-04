@@ -156,7 +156,6 @@ resource "helm_release" "nginx_test_proto" {
   ]
 }
 
-
 data "pxc_cloud_secret" "test_age" {
   secret_name = "age-test"
 }
@@ -164,3 +163,4 @@ data "pxc_cloud_secret" "test_age" {
 output "age_out" {
   value = jsondecode(data.pxc_cloud_secret.test_age.secret_data)
 }
+

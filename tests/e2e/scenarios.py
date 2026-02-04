@@ -179,3 +179,22 @@ def deployments_scenario(request, controller_scenario, get_k8s_api_v1):
 
     if not request.config.getoption("--skip-cleanup"):
         destroy(scenario_name)
+
+
+
+@pytest.fixture(scope="session")
+def harbor_scenario(request, controller_scenario, get_k8s_api_v1):
+    scenario_name = "harbor"
+
+    if not request.config.getoption("--skip-apply"):
+        apply("pxc-controller", scenario_name, get_k8s_api_v1, True, True)
+        # we also need to reapply the controller scenario as the controller module gets
+        # secrets by discovery that are set during the harbor scenario
+        # todo: this could be made faster by first checking if the secrets exist and only 
+        # applying when they were first created
+        apply("pxc-controller", "controller", get_k8s_api_v1, True, True)
+
+    yield
+
+    if not request.config.getoption("--skip-cleanup"):
+        destroy(scenario_name)

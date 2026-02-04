@@ -482,8 +482,6 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
 
     alerts = response.json()
 
-    logger.info(pprint.pformat(alerts))
-
     critical_alerts = []
     warning_alerts = []
 
@@ -494,6 +492,7 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
             severity == "critical"
             and alert["labels"]["alertname"] != "haproxy all backends down"
         ):
+            logger.error(alert)
             critical_alerts.append(alert["labels"]["alertname"])
         elif severity == "warning":
             warning_alerts.append(alert["labels"]["alertname"])
@@ -501,6 +500,7 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
     if warning_alerts:
         logger.warning(f"Warning alerts firing: {', '.join(warning_alerts)}")
 
+    
     assert not critical_alerts, f"Critical alerts firing: {', '.join(critical_alerts)}"
 
 
@@ -618,3 +618,69 @@ def test_delete_namespace_ingress_hook(
     logger.info(bind_records)
 
     assert "nginx-ns-delete-test" not in bind_records
+
+
+# todo: deep tests, validate cache into cloud-mirror repository
+# todo: validate inject functionality
+def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1):
+    logger.info("harbor test")
+    v1 = get_k8s_api_v1
+
+    # test namespace and pod creation => admission controller success
+    namespace = "pytest-harbor-namespace"
+
+    try:
+        # test create namespace
+        v1.create_namespace(
+            client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace))
+        )
+
+        # create pod in namespace
+        pod_manifest = client.V1Pod(
+            metadata=client.V1ObjectMeta(name="pytest-pod"),
+            spec=client.V1PodSpec(
+                containers=[
+                    client.V1Container(
+                        name="busybox",
+                        image="busybox",
+                        command=["sh", "-c", "echo Hello from the pod && sleep 5"],
+                    )
+                ],
+                restart_policy="Never",
+            ),
+        )
+        v1.create_namespaced_pod(namespace=namespace, body=pod_manifest)
+
+        # poll the pod status
+        while True:
+            pod_manifest = v1.read_namespaced_pod(
+                name="pytest-pod", namespace=namespace
+            )
+            
+            phase = pod_manifest.status.phase
+            assert phase in ("Succeeded", "Running", "Pending", "Failed")
+            
+            if phase in ("Succeeded", "Failed"):
+                break
+
+            time.sleep(1)
+
+        first_container_image = pod_manifest.spec.containers[0].image
+
+        assert first_container_image.startswith(f"harbor.{get_test_env["pve_test_deployments_domain"]}")
+
+        logger.info((f"Pod is running image: {first_container_image}"))
+
+        # validate no errors in pve-cloud-controller ns
+        ctlr_pods = v1.list_namespaced_pod(namespace="pve-cloud-controller").items
+        assert ctlr_pods
+
+        for pod in ctlr_pods:
+            assert pod.status.phase in ["Running", "Succeeded"]
+
+            for status in pod.status.container_statuses:
+                assert status.restart_count == 0
+
+    finally:
+        # cleanup
+        v1.delete_namespace(name=namespace)

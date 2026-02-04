@@ -37,6 +37,11 @@ module "controller" {
   route53_secret_access_key = "test"
   external_forwarded_ip = "127.0.0.1" # test too
   route53_endpoint_url = "http://pve-cloud-moto.moto-mock.svc.cluster.local:5000"
+
+  log_level = "DEBUG"
+
+  # set harbor host if tls is available, needs valid certificate to perform testing
+  harbor_mirror_host = contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_target_pve") && contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_stack_name") ? "harbor.${local.test_pve_conf["pve_test_deployments_domain"]}" : null
 }
 
 resource "kubernetes_namespace" "moto_mock" {
@@ -107,4 +112,48 @@ resource "pxc_cloud_age_secret" "test" {
 
 output "age_out" {
   value = jsondecode(pxc_cloud_age_secret.test.plain_data)
+}
+
+# deploy a harbor as central artifactory, for caching and mirroring
+# these tests require the fields pve_test_k8s_tls_copy_* to be set in the test env file
+resource "random_password" "harbor_pw" {
+  length = 24
+}
+
+resource "helm_release" "harbor" {
+  depends_on = [ module.controller ]
+  count = contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_target_pve") && contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_stack_name") ? 1 : 0
+  repository = "https://helm.goharbor.io"
+  chart = "harbor"
+  version = "1.18.1"
+  name = "harbor"
+  namespace = "harbor"
+  create_namespace = true
+
+  values = [
+    # minimal config for ram optimized usage + nodeport for ssh shell
+    <<-YML
+      updateStrategy:
+        type: Recreate
+      expose:
+        ingress:
+          className: nginx
+          hosts:
+            core: harbor.${local.test_pve_conf["pve_test_deployments_domain"]}
+            notary: notary.${local.test_pve_conf["pve_test_deployments_domain"]}
+        tls:
+          secret:
+            notarySecretName: cluster-tls
+            secretName: cluster-tls
+          certSource: secret
+      persistence:
+        persistentVolumeClaim:
+          registry:
+            size: 250Gi
+      externalURL: https://harbor.${local.test_pve_conf["pve_test_deployments_domain"]}
+      harborAdminPassword: ${random_password.harbor_pw.result}
+    YML
+  ]
+
+  timeout = 1200
 }

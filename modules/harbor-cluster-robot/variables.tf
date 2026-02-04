@@ -1,8 +1,3 @@
-variable "harbor_namespace" {
-  type = string
-  default = "harbor"
-}
-
 variable "harbor_permissions" {
   # description harbor permissions after harbor permissions terraform provider for robot account
   type = list(object({
@@ -16,5 +11,9 @@ variable "harbor_permissions" {
 }
 
 variable "scope_name" {
+  type = string
+}
+
+variable "harbor_host" {
   type = string
 }

@@ -69,3 +69,8 @@ variable "route53_endpoint_url" {
   type = string
   default = null
 }
+
+variable "log_level" {
+  type = string
+  default = "INFO"
+}

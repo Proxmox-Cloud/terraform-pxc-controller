@@ -217,6 +217,8 @@ resource "kubernetes_manifest" "adm_deployment" {
                   mountPath: "/etc/controller-conf"
                   raedOnly: true
               env:
+                - name: LOG_LEVEL
+                  value: '${var.log_level}'
                 - name: PG_CONN_STR
                   value: '${local.pg_conn_str}'
                 - name: EXCLUDE_MIRROR_NAMESPACES

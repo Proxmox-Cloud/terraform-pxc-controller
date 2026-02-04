@@ -4,10 +4,6 @@ terraform {
       source = "goharbor/harbor"
       version = "3.11.3"
     }
-    kubernetes = {
-      source = "hashicorp/kubernetes"
-      version = "2.38.0"
-    }
     pxc = {
       source = "Proxmox-Cloud/pxc"
       version = "~>0.2.6" # pxc sed ci - DONT REMOVE COMMENT!
