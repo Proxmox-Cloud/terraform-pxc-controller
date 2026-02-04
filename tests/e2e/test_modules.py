@@ -1,5 +1,4 @@
 import logging
-import pprint
 import socket
 import ssl
 import time
@@ -500,7 +499,6 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
     if warning_alerts:
         logger.warning(f"Warning alerts firing: {', '.join(warning_alerts)}")
 
-    
     assert not critical_alerts, f"Critical alerts firing: {', '.join(critical_alerts)}"
 
 
@@ -656,10 +654,10 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
             pod_manifest = v1.read_namespaced_pod(
                 name="pytest-pod", namespace=namespace
             )
-            
+
             phase = pod_manifest.status.phase
             assert phase in ("Succeeded", "Running", "Pending", "Failed")
-            
+
             if phase in ("Succeeded", "Failed"):
                 break
 
@@ -667,7 +665,9 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
 
         first_container_image = pod_manifest.spec.containers[0].image
 
-        assert first_container_image.startswith(f"harbor.{get_test_env["pve_test_deployments_domain"]}")
+        assert first_container_image.startswith(
+            f"harbor.{get_test_env["pve_test_deployments_domain"]}"
+        )
 
         logger.info((f"Pod is running image: {first_container_image}"))
 
