@@ -15,7 +15,7 @@ resource "kubernetes_secret" "pull_secret" {
     annotations = {
       # cloud controller checks the presence of this secret annotation
       # and injects it into all service accounts of the namespace
-      "pve-cloud-pull-secret" = "sa-inject" 
+      "pve-cloud-pull-secret" = "pod-inject" 
     }
   }
 
