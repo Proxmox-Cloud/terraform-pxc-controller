@@ -16,7 +16,7 @@ Create a matcher for error severities and point it to your gotify instance.
 
 AWX supports gotify only via the generic webhook.
 
-Again create an app inside gotify for your awx and copy the token. For the notification inside the awx ui set `https://gotify.yourdomain.tech/message?token=YOUR_TOKEN_HERE` as target url.
+Again create an app inside gotify for your awx and copy the token. For the notification inside the awx ui set `https://gotify.yourdomain.tech/message?token=YOUR_TOKEN_HERE` as target url. Set the headers to `{}` and the body to `POST`.
 
 You need to modify the message templates by setting the slider `Customize messages...`. For the error message set the value to `{ "title": "Job {{ job.name }} failed!", "message": "Job {{ job.id }} failed, playbook: {{ job.playbook }}, project: {{ job.summary_fields.project.name }}." }`.
 

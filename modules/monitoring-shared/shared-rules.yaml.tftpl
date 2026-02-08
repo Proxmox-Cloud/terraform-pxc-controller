@@ -80,6 +80,15 @@ additionalPrometheusRulesMap:
             annotations:
               summary: "Ram usage for {{ $labels.host }} is critical."
               description: "Only {{ $value }} percent ram are free for host {{ $labels.host }}."
+          
+          - alert: "swap usage critical"
+            for: "30s"
+            expr: '(node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes) / node_memory_SwapTotal_bytes > 0.8'
+            labels:
+              severity: "critical"
+            annotations:
+              summary: "Swap usage for {{ $labels.host }} is critical."
+              description: "{{ $value }} percent of swap are in use for host {{ $labels.host }}."
 
           - alert: "cpu usage critical"
             expr: 'avg by(instance) (rate(node_cpu_seconds_total{job="pve-node", mode="idle"}[1m])) < 0.05'
@@ -89,6 +98,17 @@ additionalPrometheusRulesMap:
             annotations:
               summary: "CPU usage for {{ $labels.host }} is critical."
               description: "Only {{ $value }} percent cpu are unused for host {{ $labels.host }}."
+          
+      - name: zfs
+        rules:
+          - alert: "zfs unhealthy"
+            for: "30s"
+            expr: 'node_zfs_zpool_state{state=~"faulted|degraded"} == 1'
+            labels:
+              severity: "critical"
+            annotations:
+              summary: "Zfs pool {{ $labels.zpool }} entered {{ $labels.state }} state."
+              description: "Pool on host {{ $labels.host }} is in {{ $labels.state }} state."
 
       - name: haproxy
         rules:

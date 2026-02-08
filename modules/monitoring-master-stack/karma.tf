@@ -5,18 +5,9 @@ data "pxc_cloud_secrets" "mon_clients" {
 
 locals {
   mon_clients = jsondecode(data.pxc_cloud_secrets.mon_clients.secrets_data)
-}
-
-resource "kubernetes_config_map" "karma" {
-  metadata {
-    name = "karma-conf"
-    namespace = helm_release.kube_prom_stack.namespace
-  }
-
-  data = {
-    "karma.yaml" = yamlencode({
+  karma_conf = yamlencode({
       alertmanager = {
-        interval = "5s"
+        interval = "6s"
         servers = concat([
           {
             name = "${data.pxc_cloud_self.self.stack_name}.${local.cluster_vars.pve_cloud_domain}"
@@ -88,9 +79,18 @@ resource "kubernetes_config_map" "karma" {
         }
       }
     })
-  }
 }
 
+resource "kubernetes_config_map" "karma" {
+  metadata {
+    name = "karma-conf"
+    namespace = helm_release.kube_prom_stack.namespace
+  }
+
+  data = {
+    "karma.yaml" = local.karma_conf
+  }
+}
 
 resource "kubernetes_manifest" "karma" {
   manifest = yamldecode(<<-YAML
@@ -108,6 +108,8 @@ resource "kubernetes_manifest" "karma" {
           app: karma
       template:
         metadata:
+          annotations:
+            'config-checksum': ${sha256(local.karma_conf)}
           labels:
             app: karma
         spec:
