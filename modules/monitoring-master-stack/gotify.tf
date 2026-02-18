@@ -4,9 +4,10 @@ resource "random_password" "gotify_admin_pw" {
 }
 
 resource "helm_release" "gotify" {
-  repository = "https://pmoscode-helm.github.io/gotify/"
+  # todo: replace with original once they merged changes for update strategy
+  repository = "oci://registry-1.docker.io/tobiashvmz"
   chart = "gotify"
-  version = "0.7.0"
+  version = "0.7.1"
   name = "gotify"
   namespace = helm_release.kube_prom_stack.namespace
 
@@ -28,6 +29,8 @@ resource "helm_release" "gotify" {
           - hosts:
               - gotify.${var.ingress_apex}
             secretName: cluster-tls
+      updateStrategy:
+        type: Recreate
     EOT
   ]
 }
