@@ -88,6 +88,21 @@ output "scrape_config" {
                     ])
                 },
                 {
+                    job_name = "pve-node-btrfs"
+                    fallback_scrape_protocol = "PrometheusText0.0.4"
+                    static_configs = flatten([
+                    for pve_cluster, pve_hosts in local.pve_inventory : [
+                        for host, host_values in pve_hosts : {
+                            targets = [ "${host_values.ansible_host}:9899" ]
+                            labels = {
+                                "host" = "${host}.${pve_cluster}"
+                                "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${pve_cluster}")
+                            }
+                        } if contains(keys(local.cluster_vars.pve_host_vars[host]), "install_btrfs_root_prom_exporter") && local.cluster_vars.pve_host_vars[host]["install_btrfs_root_prom_exporter"]
+                    ]
+                    ])
+                },
+                {
                     # any mon ip could also contain a manager, we simply try to scrape all
                     job_name = "ceph-mgrs"
                     static_configs = [

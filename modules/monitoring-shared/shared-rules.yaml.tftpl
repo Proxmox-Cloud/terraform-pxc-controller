@@ -109,6 +109,57 @@ additionalPrometheusRulesMap:
             annotations:
               summary: "Zfs pool {{ $labels.zpool }} entered {{ $labels.state }} state."
               description: "Pool on host {{ $labels.host }} is in {{ $labels.state }} state."
+    
+      - name: btrfs
+        rules:
+          - alert: "raid1 btrfs uneven devices"
+            for: "30s"
+            expr: '(count by (instance, uuid, host) (node_btrfs_device_size_bytes) and on (uuid) node_btrfs_allocation_ratio{mode="raid1"}) % 2 == 1'
+            labels:
+              severity: "critical"
+            annotations:
+              summary: "Btrfs raid1 degraded on host {{ $labels.host }}."
+              description: "Btrfs {{ $labels.uuid }} has only {{ $value }} number of devices available."
+          - alert: "btrfs disk stopped responding"
+            for: "30s"
+            expr: 'node_btrfs_device_size_bytes == 0'
+            labels:
+              severity: "critical"
+            annotations:
+              summary: "Btrfs on host {{ $labels.host }} stopped responding."
+              description: "Btrfs device {{ $labels.device }} of fs {{ $labels.uuid }}."
+          - alert: "btrfs corruption errors"
+            for: "30s"
+            expr: 'btrfs_corruption_errs != 0'
+            labels:
+              severity: "critical"
+            annotations:
+              summary: "Btrfs corruption errors on host {{ $labels.host }}."
+              description: "Btrfs device {{ $labels.device }} reported {{ $value }} corruption errors."
+          - alert: "btrfs flush io errors"
+            for: "30s"
+            expr: 'btrfs_flush_io_errs != 0'
+            labels:
+              severity: "critical"
+            annotations:
+              summary: "Btrfs flush io errors on host {{ $labels.host }}."
+              description: "Btrfs device {{ $labels.device }} reported {{ $value }} flush io errors."
+          - alert: "btrfs read io errors"
+            for: "30s"
+            expr: 'btrfs_read_io_errs != 0'
+            labels:
+              severity: "critical"
+            annotations:
+              summary: "Btrfs read io errors on host {{ $labels.host }}."
+              description: "Btrfs device {{ $labels.device }} reported {{ $value }} read io errors."
+          - alert: "btrfs write io errors"
+            for: "30s"
+            expr: 'btrfs_write_io_errs != 0'
+            labels:
+              severity: "critical"
+            annotations:
+              summary: "Btrfs write io errors on host {{ $labels.host }}."
+              description: "Btrfs device {{ $labels.device }} reported {{ $value }} write io errors."
 
       - name: haproxy
         rules:
