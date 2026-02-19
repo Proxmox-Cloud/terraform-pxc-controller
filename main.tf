@@ -258,6 +258,8 @@ resource "kubernetes_manifest" "adm_deployment" {
               args:
                 - "-w"
                 - "4"
+                - "--threads"
+                - "4"
                 - "-b"
                 - "0.0.0.0:443"
                 - "--certfile=/etc/tls/tls.crt"
