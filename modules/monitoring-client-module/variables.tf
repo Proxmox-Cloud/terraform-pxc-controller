@@ -3,10 +3,15 @@ variable "alertmanager_host" {
   description = "Host to expose this stacks alertmanager under. This is needed for the master monitoring stack to bundle and discover alerts."
 }
 
+variable "victorialogs_host" {
+  type = string
+  description = "Host to expxose victorialogs under, this will be picked up by the master stack and the multilevel chart for aggregated log search."
+}
+
 variable "monitor_proxmox_cluster" {
   type = bool
   default = false
-  description = "When set to true the underlying proxmox cluster will be monitored by this stack (inserts targets and rules)."
+  description = "When set to true the underlying proxmox cluster will be monitored by this stack (inserts targets, rules and collect host logs)."
 }
 
 variable "optional_scrape_pve_hosts" {

@@ -34,7 +34,7 @@ resource "random_password" "alertmanager_pw" {
 }
 
 resource "pxc_cloud_secret" "alertmanager_mon" {
-  secret_name = "${data.pxc_cloud_self.self.stack_name}.${data.pxc_cloud_self.self.target_pve}"
+  secret_name = "${data.pxc_cloud_self.self.stack_name}.${data.pxc_cloud_self.self.target_pve}-alrtmgr"
   secret_data = jsonencode({
     host = var.alertmanager_host
     k8s_stack_name = data.pxc_cloud_self.self.stack_name
