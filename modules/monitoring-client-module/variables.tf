@@ -8,6 +8,12 @@ variable "victorialogs_host" {
   description = "Host to expxose victorialogs under, this will be picked up by the master stack and the multilevel chart for aggregated log search."
 }
 
+variable "victorialogs_sc_name" {
+  type = string
+  description = "Specific storage class to use for victoria logs db. If undefined defaults to the default class."
+  default = ""
+}
+
 variable "monitor_proxmox_cluster" {
   type = bool
   default = false

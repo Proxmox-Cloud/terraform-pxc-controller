@@ -10,17 +10,14 @@ terraform {
       source = "hashicorp/helm"
       version = "3.1.1"
     }
-    tls = {
-      source = "hashicorp/tls"
-      version = "4.1.0"
+    harbor = {
+      source = "goharbor/harbor"
+      version = "3.11.3"
     }
     pxc = {
       source = "Proxmox-Cloud/pxc"
       version = "~>0.3.0" # pxc sed ci - DONT REMOVE COMMENT!
     }
-    time = {
-      source = "hashicorp/time"
-      version = "0.13.1"
-    }
   }
 }
+

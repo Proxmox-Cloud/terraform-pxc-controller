@@ -38,6 +38,8 @@ module "controller" {
   external_forwarded_ip = "127.0.0.1" # test too
   route53_endpoint_url = "http://pve-cloud-moto.moto-mock.svc.cluster.local:5000"
 
+  exclude_mirror_namespaces = ["harbor"]
+
   log_level = "DEBUG"
 
   # set harbor host if tls is available, needs valid certificate to perform testing
@@ -120,8 +122,14 @@ resource "random_password" "harbor_pw" {
   length = 24
 }
 
+resource "time_sleep" "wait_for_controller" {
+  depends_on =  [ module.controller ]
+
+  create_duration = "1m"
+}
+
 resource "helm_release" "harbor" {
-  depends_on = [ module.controller ]
+  depends_on = [ time_sleep.wait_for_controller ]
   count = contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_target_pve") && contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_stack_name") ? 1 : 0
   repository = "https://helm.goharbor.io"
   chart = "harbor"

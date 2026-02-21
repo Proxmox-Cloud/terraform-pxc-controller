@@ -197,3 +197,20 @@ def harbor_scenario(request, controller_scenario, get_k8s_api_v1):
 
     if not request.config.getoption("--skip-cleanup"):
         destroy(scenario_name)
+
+
+@pytest.fixture(scope="session")
+def secondary_scenario(request, deployments_scenario, get_k8s_api_v1, get_k8s_secondary_api_v1, get_secondary_kubespray_inv):
+    scenario_name = "secondary"
+
+    if not request.config.getoption("--skip-apply"):
+        apply("pxc-controller", "secondary", get_k8s_secondary_api_v1, True, True)
+        # after having registered our client we also need to run the deployments scenario again for the master monitoring to pick up on this
+        # todo: this could be made faster by first checking if the secrets exist and only
+        # applying when they were first created
+        apply("pxc-controller", "deployments", get_k8s_api_v1, True, True)
+
+    yield
+
+    if not request.config.getoption("--skip-cleanup"):
+        destroy(scenario_name)

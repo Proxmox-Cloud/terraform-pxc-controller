@@ -1,5 +1,14 @@
-data "pxc_cloud_secret" "vlogs_storage_node_pw" {
+
+resource "random_password" "vlogs_storage_node_pw" {
+  length           = 16
+  special          = false
+}
+
+resource "pxc_cloud_secret" "vlogs_storage_node" {
   secret_name = "${local.cluster_vars.pve_cloud_domain}-vlogs-storage-node"
+  secret_data = jsonencode({
+    password = random_password.vlogs_storage_node_pw.result
+  })
 }
 
 resource "kubernetes_secret" "basic_auth_secret_vlogs" {
@@ -9,20 +18,60 @@ resource "kubernetes_secret" "basic_auth_secret_vlogs" {
     namespace = kubernetes_namespace.mon_ns.metadata[0].name
   }
   data = {
-    "auth" : "vlogs:${bcrypt(jsondecode(data.pxc_cloud_secret.vlogs_storage_node_pw.secret_data).password)}"
+    "auth" : "vlogs:${bcrypt(random_password.vlogs_storage_node_pw.result)}"
   }
 }
 
-resource "pxc_cloud_secret" "vlogs_discovery" {
-  secret_name = "${data.pxc_cloud_self.self.stack_name}.${data.pxc_cloud_self.self.target_pve}-vlogs"
-  secret_data = jsonencode({
-    host = var.victorialogs_host
-    k8s_stack_name = data.pxc_cloud_self.self.stack_name
-  })
+data "pxc_cloud_secrets" "vlogs_clients" {
   secret_type = "vlogs-storage-node"
 }
 
+# replace ingress with oauth / use victoria method?
+resource "helm_release" "vlogs_ml" {
+  repository = "https://victoriametrics.github.io/helm-charts/"
+  chart = "victoria-logs-multilevel"
+  version = "0.0.9"
+  name = "vlogs-ml"
+  namespace = kubernetes_namespace.mon_ns.metadata[0].name
+  create_namespace = true
 
+  values = [
+    # minimal config for ram optimized usage + nodeport for ssh shell
+    <<-YML
+      vmauth:
+        enabled: false
+
+      vlselect:
+        extraArgs:
+          storageNode.tls: "true"
+          storageNode.username: "vlogs"
+          storageNode.password: "${random_password.vlogs_storage_node_pw.result}"
+        ingress:
+          enabled: true
+          ingressClassName: nginx
+          hosts:
+            - name: vlselect.${var.ingress_apex}
+              path:
+                - /
+              port: http
+          tls:
+            - secretName: cluster-tls
+              hosts:
+                - vlselect.${var.ingress_apex}
+    YML
+    ,yamlencode({
+      storageNodes = concat([
+        for vlogs_client in jsondecode(data.pxc_cloud_secrets.vlogs_clients.secrets_data) : vlogs_client.host
+      ], ["vlogs.${var.ingress_apex}"]) # we cant go direct because extraargs tls sets it for all storage nodes
+    })
+  ]
+
+  timeout = 1200
+}
+
+
+# also deploy database and alerting
+# todo: refactor later into shared?
 resource "helm_release" "vlogs" {
   repository = "https://victoriametrics.github.io/helm-charts/"
   chart = "victoria-logs-single"
@@ -54,14 +103,14 @@ resource "helm_release" "vlogs" {
           enabled: true
           ingressClassName: nginx
           hosts:
-            - name: ${var.victorialogs_host}
+            - name: vlogs.${var.ingress_apex}
               path:
                 - /
               port: http
           tls:
             - secretName: cluster-tls
               hosts:
-                - ${var.victorialogs_host}
+                - vlogs.${var.ingress_apex}
     YML
   ]
 
