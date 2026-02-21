@@ -133,21 +133,8 @@ resource "helm_release" "vmalert" {
         notifier:
           alertmanager:
             url: "http://kube-prometheus-stack-alertmanager:9093"
-        # todo: source these from the shared module   
-        config:
-          alerts:
-            groups:
-              - name: LogAlerts
-                type: vlogs
-                rules:
-                  - alert: HighErrorRate
-                    expr: '(error OR exception) | stats by (kubernetes.pod_name) count() as total'
-                    for: 1m
-                    labels:
-                      severity: critical
-                    annotations:
-                      summary: "Errors found in {{ $labels.kubernetes_pod_name }}"
     YML
+    , module.mon_shared.log_rules
   ]
 
   timeout = 1200

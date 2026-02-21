@@ -150,7 +150,19 @@ output "rules" {
 
 output "log_rules" {
   value = <<-YAML
-
-
+    server:
+      config:
+        alerts:
+          groups:
+            - name: "Generic Log Alerts"
+              type: vlogs
+              rules:
+                - alert: "Number of Errors"
+                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") | stats by (kubernetes.container_name, kubernetes.pod_namespace, cluster_stack) count() as total_errors'
+                  labels:
+                    severity: warning
+                  annotations:
+                    summary: 'Errors in {{ index $labels "kubernetes.pod_namespace" }}.'
+                    description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "cluster_stack" }}.'
   YAML
 }
