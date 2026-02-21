@@ -46,18 +46,6 @@ resource "helm_release" "vlogs_ml" {
           storageNode.tls: "true"
           storageNode.username: "vlogs"
           storageNode.password: "${random_password.vlogs_storage_node_pw.result}"
-        ingress:
-          enabled: true
-          ingressClassName: nginx
-          hosts:
-            - name: vlselect.${var.ingress_apex}
-              path:
-                - /
-              port: http
-          tls:
-            - secretName: cluster-tls
-              hosts:
-                - vlselect.${var.ingress_apex}
     YML
     ,yamlencode({
       storageNodes = concat([
