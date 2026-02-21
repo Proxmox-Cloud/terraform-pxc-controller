@@ -14,9 +14,9 @@ data "pxc_cloud_self" "self" {}
 
 // parse pxc provider data sources
 locals {
-  pve_inventory = var.monitor_proxmox_cluster ? yamldecode(data.pxc_pve_inventory.inv[0].inventory) : {}
-
   cluster_vars = yamldecode(data.pxc_cloud_self.self.cluster_vars)
+
+  cluster_hosts = var.monitor_proxmox_cluster ? yamldecode(data.pxc_pve_inventory.inv[0].inventory)[local.cluster_vars.pve_cluster_name] : {}
 
   ceph_mon_hosts = var.monitor_proxmox_cluster ? split(" ",trimspace(regex("mon_host\\s=\\s([0-9. ]+)", data.pxc_ceph_access.ceph_access[0].ceph_conf)[0])) : []
 
@@ -62,44 +62,39 @@ output "scrape_config" {
                 {
                     job_name = "pve-systemd"
                     static_configs = flatten([
-                    for pve_cluster, pve_hosts in local.pve_inventory : [
-                        for host, host_values in pve_hosts : {
+                        for host, host_values in local.cluster_hosts : {
                             targets = [ "${host_values.ansible_host}:9558" ]
                             labels = {
-                                "host" = "${host}.${pve_cluster}"
-                                "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${pve_cluster}")
+                                "host" = "${host}.${local.cluster_vars.pve_cluster_name}"
+                                "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${local.cluster_vars.pve_cluster_name}")
                             }
                         }
-                    ]
+                    
                     ])
                 },
                 {
                     job_name = "pve-node"
                     static_configs = flatten([
-                    for pve_cluster, pve_hosts in local.pve_inventory : [
-                        for host, host_values in pve_hosts : {
+                        for host, host_values in local.cluster_hosts : {
                             targets = [ "${host_values.ansible_host}:9100" ]
                             labels = {
-                                "host" = "${host}.${pve_cluster}"
-                                "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${pve_cluster}")
+                                "host" = "${host}.${local.cluster_vars.pve_cluster_name}"
+                                "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${local.cluster_vars.pve_cluster_name}")
                             }
                         }
-                    ]
                     ])
                 },
                 {
                     job_name = "pve-node-btrfs"
                     fallback_scrape_protocol = "PrometheusText0.0.4"
                     static_configs = flatten([
-                    for pve_cluster, pve_hosts in local.pve_inventory : [
-                        for host, host_values in pve_hosts : {
+                        for host, host_values in local.cluster_hosts : {
                             targets = [ "${host_values.ansible_host}:9899" ]
                             labels = {
-                                "host" = "${host}.${pve_cluster}"
-                                "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${pve_cluster}")
+                                "host" = "${host}.${local.cluster_vars.pve_cluster_name}"
+                                "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${local.cluster_vars.pve_cluster_name}")
                             }
                         } if contains(keys(local.cluster_vars.pve_host_vars[host]), "install_btrfs_root_prom_exporter") && local.cluster_vars.pve_host_vars[host]["install_btrfs_root_prom_exporter"]
-                    ]
                     ])
                 },
                 {
@@ -151,4 +146,11 @@ output "rules" {
       thermal_temperature_warn = var.thermal_temperature_warn
       disk_temperature_warn    = var.disk_temperature_warn
     }) : "{}"
+}
+
+output "log_rules" {
+  value = <<-YAML
+
+
+  YAML
 }

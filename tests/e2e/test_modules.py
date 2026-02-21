@@ -76,10 +76,10 @@ def test_adm_pod_creation(get_k8s_api_v1, controller_scenario):
         v1.delete_namespace(name=namespace)
 
 
-def test_cloud_cron_execution(set_k8s_auth, controller_scenario):
+def test_cloud_cron_execution(get_primary_kubeconfig, controller_scenario):
     logger.info("test cron exec")
 
-    kubeconfig = set_k8s_auth
+    kubeconfig = get_primary_kubeconfig
 
     # auth kubernetes api
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
@@ -134,9 +134,13 @@ def test_cloud_cron_execution(set_k8s_auth, controller_scenario):
 
 
 def test_delete_ingress(
-    get_test_env, set_k8s_auth, controller_scenario, get_moto_client, set_pve_cloud_auth
+    get_test_env,
+    get_primary_kubeconfig,
+    controller_scenario,
+    get_moto_client,
+    set_pve_cloud_auth,
 ):
-    kubeconfig = set_k8s_auth
+    kubeconfig = get_primary_kubeconfig
 
     # auth kubernetes api
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
@@ -233,9 +237,13 @@ def test_delete_ingress(
 
 
 def test_update_ingress(
-    get_test_env, set_k8s_auth, controller_scenario, get_moto_client, set_pve_cloud_auth
+    get_test_env,
+    get_primary_kubeconfig,
+    controller_scenario,
+    get_moto_client,
+    set_pve_cloud_auth,
 ):
-    kubeconfig = set_k8s_auth
+    kubeconfig = get_primary_kubeconfig
 
     # auth kubernetes api
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
@@ -365,8 +373,10 @@ def test_proxy_proto_403(get_test_env, deployments_scenario):
     assert response.status_code == 403
 
 
-def test_ingress_cluster_cert_block(get_test_env, set_k8s_auth, controller_scenario):
-    kubeconfig = set_k8s_auth
+def test_ingress_cluster_cert_block(
+    get_test_env, get_primary_kubeconfig, controller_scenario
+):
+    kubeconfig = get_primary_kubeconfig
 
     # auth kubernetes api
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
@@ -684,3 +694,7 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
     finally:
         # cleanup
         v1.delete_namespace(name=namespace)
+
+
+def test_secondary_logging(get_test_env, secondary_scenario, get_k8s_secondary_api_v1):
+    logger.info("secondary logging")

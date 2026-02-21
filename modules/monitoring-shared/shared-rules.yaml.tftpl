@@ -110,6 +110,17 @@ additionalPrometheusRulesMap:
               summary: "Zfs pool {{ $labels.zpool }} entered {{ $labels.state }} state."
               description: "Pool on host {{ $labels.host }} is in {{ $labels.state }} state."
     
+      - name: log2ram
+        rules:
+          - alert: "log2ram filling up"
+            for: "30s"
+            expr: 'node_filesystem_avail_bytes{device="log2ram"} / node_filesystem_size_bytes{device="log2ram"} < 0.1'
+            labels:
+              severity: "critical"
+            annotations:
+              summary: "Log2ram on host {{ $labels.host }} is running out of space."
+              description: "Log2ram is at {{ $value }} free percent, consider analyzing /var/log and reducing log writing confs."
+
       - name: btrfs
         rules:
           - alert: "raid1 btrfs uneven devices"

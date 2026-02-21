@@ -55,3 +55,8 @@ variable "alertmanger_e2e_ingress" {
   description = "Toggle alertmanager ingress for testing purposes."
 }
 
+variable "victorialogs_sc_name" {
+  type = string
+  description = "Specific storage class to use for victoria logs db. If undefined defaults to the default class."
+  default = ""
+}

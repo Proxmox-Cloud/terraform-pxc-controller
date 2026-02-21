@@ -96,3 +96,5 @@ resource "helm_release" "kube_prom_stack" {
     })
   ]
 }
+
+
