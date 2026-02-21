@@ -134,7 +134,11 @@ def test_cloud_cron_execution(get_primary_kubeconfig, controller_scenario):
 
 
 def test_delete_ingress(
-    get_test_env, get_primary_kubeconfig, controller_scenario, get_moto_client, set_pve_cloud_auth
+    get_test_env,
+    get_primary_kubeconfig,
+    controller_scenario,
+    get_moto_client,
+    set_pve_cloud_auth,
 ):
     kubeconfig = get_primary_kubeconfig
 
@@ -233,7 +237,11 @@ def test_delete_ingress(
 
 
 def test_update_ingress(
-    get_test_env, get_primary_kubeconfig, controller_scenario, get_moto_client, set_pve_cloud_auth
+    get_test_env,
+    get_primary_kubeconfig,
+    controller_scenario,
+    get_moto_client,
+    set_pve_cloud_auth,
 ):
     kubeconfig = get_primary_kubeconfig
 
@@ -365,7 +373,9 @@ def test_proxy_proto_403(get_test_env, deployments_scenario):
     assert response.status_code == 403
 
 
-def test_ingress_cluster_cert_block(get_test_env, get_primary_kubeconfig, controller_scenario):
+def test_ingress_cluster_cert_block(
+    get_test_env, get_primary_kubeconfig, controller_scenario
+):
     kubeconfig = get_primary_kubeconfig
 
     # auth kubernetes api

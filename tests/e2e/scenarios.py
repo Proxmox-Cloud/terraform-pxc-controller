@@ -200,7 +200,13 @@ def harbor_scenario(request, controller_scenario, get_k8s_api_v1):
 
 
 @pytest.fixture(scope="session")
-def secondary_scenario(request, deployments_scenario, get_k8s_api_v1, get_k8s_secondary_api_v1, get_secondary_kubespray_inv):
+def secondary_scenario(
+    request,
+    deployments_scenario,
+    get_k8s_api_v1,
+    get_k8s_secondary_api_v1,
+    get_secondary_kubespray_inv,
+):
     scenario_name = "secondary"
 
     if not request.config.getoption("--skip-apply"):
