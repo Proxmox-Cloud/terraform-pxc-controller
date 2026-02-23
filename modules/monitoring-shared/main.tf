@@ -94,7 +94,7 @@ output "scrape_config" {
                                 "host" = "${host}.${local.cluster_vars.pve_cluster_name}"
                                 "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${local.cluster_vars.pve_cluster_name}")
                             }
-                        } if contains(keys(local.cluster_vars.pve_host_vars[host]), "install_btrfs_root_prom_exporter") && local.cluster_vars.pve_host_vars[host]["install_btrfs_root_prom_exporter"]
+                        } if contains(keys(local.cluster_vars.pve_host_vars), host) && contains(keys(local.cluster_vars.pve_host_vars[host]), "install_btrfs_root_prom_exporter") && local.cluster_vars.pve_host_vars[host]["install_btrfs_root_prom_exporter"]
                     ])
                 },
                 {
