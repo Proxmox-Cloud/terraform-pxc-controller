@@ -6,6 +6,9 @@ data "pxc_cloud_secrets" "mon_clients" {
 locals {
   mon_clients = jsondecode(data.pxc_cloud_secrets.mon_clients.secrets_data)
   karma_conf = yamlencode({
+      history = {
+        enabled = false # no direct access to prometheus instances
+      }
       alertmanager = {
         interval = "6s"
         servers = concat([
