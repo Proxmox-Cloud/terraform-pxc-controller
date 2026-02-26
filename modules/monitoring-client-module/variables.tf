@@ -14,6 +14,11 @@ variable "victorialogs_sc_name" {
   default = ""
 }
 
+variable "grafana_subchart_values" {
+  type = any
+  default = {}
+}
+
 variable "monitor_proxmox_cluster" {
   type = bool
   default = false
