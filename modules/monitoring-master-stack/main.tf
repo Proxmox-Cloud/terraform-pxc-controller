@@ -44,6 +44,9 @@ resource "helm_release" "kube_prom_stack" {
     yamlencode({
       additionalPrometheusRulesMap = var.extra_alert_rules
     }),
+    yamlencode({
+      grafana = var.grafana_subchart_values
+    }), # custom values for grafana config (oidc pass)
     # alertmanager settings and notification piping
     yamlencode({
       alertmanager = {

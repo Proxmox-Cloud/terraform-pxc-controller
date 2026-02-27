@@ -37,6 +37,11 @@ variable "extra_alert_rules" {
   default = {}
 }
 
+variable "grafana_subchart_values" {
+  type = any
+  default = {}
+}
+
 variable "external_karma_alertmanagers" {
   type = list(any)
   default = []
