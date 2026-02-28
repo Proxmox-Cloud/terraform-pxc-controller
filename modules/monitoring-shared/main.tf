@@ -161,6 +161,7 @@ output "log_rules" {
                   expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") | stats by (kubernetes.container_name, kubernetes.pod_namespace, cluster_stack) count() total_errors | filter total_errors:>10'
                   labels:
                     severity: warning
+                    namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
                   annotations:
                     summary: 'Errors high in {{ index $labels "kubernetes.pod_namespace" }}.'
                     description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "cluster_stack" }}.'
@@ -168,8 +169,18 @@ output "log_rules" {
                   expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") | stats by (kubernetes.container_name, kubernetes.pod_namespace, cluster_stack) count() as total_errors'
                   labels:
                     severity: info
+                    namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
                   annotations:
                     summary: 'Errors in {{ index $labels "kubernetes.pod_namespace" }}.'
                     description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "cluster_stack" }}.'
+                # inhibits info alerts as long as max err logs per pod are below or equal to ten
+                - alert: "InfoInhibitor"
+                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") | stats by (kubernetes.pod_namespace, kubernetes.container_name, cluster_stack) count() errors_per_pod | stats by (kubernetes.pod_namespace, cluster_stack) max(errors_per_pod) max_errors | filter max_errors:>10'
+                  labels:
+                    severity: none
+                    namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
+                  annotations:
+                    summary: "Inhibiting Log Info Alerts"
+
   YAML
 }
