@@ -173,14 +173,14 @@ output "log_rules" {
                   annotations:
                     summary: 'Errors in {{ index $labels "kubernetes.pod_namespace" }}.'
                     description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "cluster_stack" }}.'
-                # inhibits info alerts as long as max err logs per pod are below or equal to ten
                 - alert: "InfoInhibitor"
-                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") | stats by (kubernetes.pod_namespace, kubernetes.container_name, cluster_stack) count() errors_per_pod | stats by (kubernetes.pod_namespace, cluster_stack) max(errors_per_pod) max_errors | filter max_errors:>10'
+                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") | stats by (kubernetes.pod_namespace, kubernetes.container_name, cluster_stack) count() errors_per_pod | stats by (kubernetes.pod_namespace, cluster_stack) max(errors_per_pod) max_errors | filter max_errors:<=10'
                   labels:
                     severity: none
                     namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
                   annotations:
                     summary: "Inhibiting Log Info Alerts"
+                    description: "This is an extension to the prometheus stack default InfoInhibitor alert, extending to alerts from victoria metric logs. If any pod in a namespace has thrown more than 10 errors in the last hour, this will stop firing and the default alertmanager inhibit_rules will stop triggering, unsuppressing info log alerts for that entire namespace."
 
   YAML
 }
