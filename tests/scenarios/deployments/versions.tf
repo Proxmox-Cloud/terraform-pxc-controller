@@ -12,7 +12,7 @@ terraform {
     }
     pxc = {
       source = "Proxmox-Cloud/pxc"
-      version = "~>3.0.3" # pxc sed ci - DONT REMOVE COMMENT!
+      version = "~>3.0.4" # pxc sed ci - DONT REMOVE COMMENT!
     }
     dns = {
       source = "hashicorp/dns"
