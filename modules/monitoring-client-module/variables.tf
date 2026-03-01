@@ -14,6 +14,11 @@ variable "victorialogs_sc_name" {
   default = ""
 }
 
+variable "victoria_logs_pvc_size" {
+  type = string
+  default = "10Gi"
+}
+
 variable "grafana_subchart_values" {
   type = any
   default = {}

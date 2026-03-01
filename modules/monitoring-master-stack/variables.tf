@@ -65,3 +65,8 @@ variable "victorialogs_sc_name" {
   description = "Specific storage class to use for victoria logs db. If undefined defaults to the default class."
   default = ""
 }
+
+variable "victoria_logs_pvc_size" {
+  type = string
+  default = "10Gi"
+}

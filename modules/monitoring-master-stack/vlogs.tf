@@ -81,8 +81,10 @@ resource "helm_release" "vlogs" {
                 .cluster_stack = "${data.pxc_cloud_self.self.stack_name}"
                 del(.message)
       server:
+        retentionMaxDiskUsagePercent: "85" # auto delete logs larger than
         persistentVolume:
           storageClassName: "${var.victorialogs_sc_name}"
+          size: "${var.victoria_logs_pvc_size}
         ingress:
           annotations:
             "nginx.ingress.kubernetes.io/auth-type": "basic"
