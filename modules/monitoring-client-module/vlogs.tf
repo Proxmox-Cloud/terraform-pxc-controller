@@ -22,6 +22,15 @@ resource "pxc_cloud_secret" "vlogs_discovery" {
   secret_type = "vlogs-storage-node"
 }
 
+locals {
+  vector_control_plane_tolerations = [
+    {
+      key = "node-role.kubernetes.io/control-plane"
+      operator = "Exists"
+      effect = "NoSchedule"
+    }
+  ]
+}
 
 resource "helm_release" "vlogs" {
   repository = "https://victoriametrics.github.io/helm-charts/"
@@ -32,6 +41,11 @@ resource "helm_release" "vlogs" {
   create_namespace = true
 
   values = [
+    yamlencode({
+      vector = {
+        tolerations = flatten([local.vector_control_plane_tolerations, var.victorialogs_vector_tolerations])
+      }
+    }),
     # minimal config for ram optimized usage + nodeport for ssh shell
     <<-YML
       vector:

@@ -70,3 +70,9 @@ variable "victoria_logs_pvc_size" {
   type = string
   default = "10Gi"
 }
+
+variable "victorialogs_vector_tolerations" {
+  type = list(any)
+  description = "Extra tolerations for vector log collector daemonset."
+  default =  []
+}

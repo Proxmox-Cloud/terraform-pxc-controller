@@ -57,6 +57,15 @@ resource "helm_release" "vlogs_ml" {
   timeout = 1200
 }
 
+locals {
+  vector_control_plane_tolerations = [
+    {
+      key = "node-role.kubernetes.io/control-plane"
+      operator = "Exists"
+      effect = "NoSchedule"
+    }
+  ]
+}
 
 # also deploy database and alerting
 # todo: refactor later into shared?
@@ -69,6 +78,11 @@ resource "helm_release" "vlogs" {
   create_namespace = true
 
   values = [
+    yamlencode({
+      vector = {
+        tolerations = flatten([local.vector_control_plane_tolerations, var.victorialogs_vector_tolerations])
+      }
+    }),
     # minimal config for ram optimized usage + nodeport for ssh shell
     <<-YML
       vector:
