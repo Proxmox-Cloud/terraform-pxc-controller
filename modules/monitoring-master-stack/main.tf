@@ -19,6 +19,11 @@ module "mon_shared" {
   cpu_temperature_warn = var.cpu_temperature_warn
   thermal_temperature_warn = var.thermal_temperature_warn
   disk_temperature_warn = var.disk_temperature_warn
+
+  victorialogs_host = "vlogs.${var.ingress_apex}"
+  victorialogs_pvc_size = var.victorialogs_pvc_size
+  victorialogs_sc_name = var.victorialogs_sc_name
+  victorialogs_vector_tolerations = var.victorialogs_vector_tolerations
 }
 
 data "pxc_cloud_self" "self" {}

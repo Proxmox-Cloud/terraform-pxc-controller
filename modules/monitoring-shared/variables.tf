@@ -6,7 +6,7 @@ variable "namespace" {
 variable "monitor_proxmox_cluster" {
   type = bool
   default = false
-  description = "When set to true the underlying proxmox cluster will be monitored by this stack (inserts targets and rules)."
+  description = "When set to true the underlying proxmox cluster will be monitored by this stack (inserts targets and rules). Also configures a discovery secret for pumping journald logs via vector from pve hosts and lxcs."
 }
 
 variable "optional_scrape_pve_hosts" {
@@ -39,4 +39,26 @@ variable "disk_temperature_warn" {
 variable "extra_scrape_configs" {
   type = list(any)
   default = []
+}
+
+variable "victorialogs_host" {
+  type = string
+  description = "Host to expxose victorialogs under, this will be picked up by the master stack and the multilevel chart for aggregated log search."
+}
+
+variable "victorialogs_vector_tolerations" {
+  type = list(any)
+  description = "Extra tolerations for vector log collector daemonset."
+  default =  []
+}
+
+variable "victorialogs_sc_name" {
+  type = string
+  description = "Specific storage class to use for victoria logs db. If undefined defaults to the default class."
+  default = ""
+}
+
+variable "victorialogs_pvc_size" {
+  type = string
+  default = "10Gi"
 }

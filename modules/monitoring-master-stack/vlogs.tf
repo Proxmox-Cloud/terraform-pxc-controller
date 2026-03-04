@@ -1,4 +1,4 @@
-
+# generate a random secret for client instances to use to secure vllogs
 resource "random_password" "vlogs_storage_node_pw" {
   length           = 16
   special          = false
@@ -57,16 +57,6 @@ resource "helm_release" "vlogs_ml" {
   timeout = 1200
 }
 
-locals {
-  vector_control_plane_tolerations = [
-    {
-      key = "node-role.kubernetes.io/control-plane"
-      operator = "Exists"
-      effect = "NoSchedule"
-    }
-  ]
-}
-
 # also deploy database and alerting
 # todo: refactor later into shared?
 resource "helm_release" "vlogs" {
@@ -77,46 +67,7 @@ resource "helm_release" "vlogs" {
   namespace = kubernetes_namespace.mon_ns.metadata[0].name
   create_namespace = true
 
-  values = [
-    yamlencode({
-      vector = {
-        tolerations = flatten([local.vector_control_plane_tolerations, var.victorialogs_vector_tolerations])
-      }
-    }),
-    # minimal config for ram optimized usage + nodeport for ssh shell
-    <<-YML
-      vector:
-        enabled: true
-        customConfig:
-          transforms:
-            parser:
-              source: |
-                .log = parse_json(.message) ?? .message
-                .cluster_stack = "${data.pxc_cloud_self.self.stack_name}"
-                del(.message)
-      server:
-        retentionMaxDiskUsagePercent: "85" # auto delete logs larger than
-        persistentVolume:
-          storageClassName: "${var.victorialogs_sc_name}"
-          size: "${var.victoria_logs_pvc_size}"
-        ingress:
-          annotations:
-            "nginx.ingress.kubernetes.io/auth-type": "basic"
-            "nginx.ingress.kubernetes.io/auth-secret": "basic-auth-vlogs"
-            "nginx.ingress.kubernetes.io/auth-realm": "Authentication Required" 
-          enabled: true
-          ingressClassName: nginx
-          hosts:
-            - name: vlogs.${var.ingress_apex}
-              path:
-                - /
-              port: http
-          tls:
-            - secretName: cluster-tls
-              hosts:
-                - vlogs.${var.ingress_apex}
-    YML
-  ]
+  values = module.mon_shared.vl_single_config
 
   timeout = 1200
 }
@@ -142,4 +93,16 @@ resource "helm_release" "vmalert" {
   ]
 
   timeout = 1200
+}
+
+# a master stack automatically monitors the proxmox cluster it is running on, all vms, lxcs and hosts use this discovery secret
+# for setting up journald log aggregation through vector systemd
+resource "pxc_cloud_secret" "vlogs_cluster_journald" {
+  secret_name = "${data.pxc_cloud_self.self.target_pve}-vlogs-journald"
+  secret_data = jsonencode({
+    target_pve = data.pxc_cloud_self.self.target_pve # this becomes the vlogs database target for all
+    basic_pw = random_password.vlogs_storage_node_pw.result
+    host = "vlogs.${var.ingress_apex}"
+  })
+  secret_type = "vlogs-cluster-journald"
 }

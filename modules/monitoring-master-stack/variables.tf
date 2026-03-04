@@ -66,7 +66,7 @@ variable "victorialogs_sc_name" {
   default = ""
 }
 
-variable "victoria_logs_pvc_size" {
+variable "victorialogs_pvc_size" {
   type = string
   default = "10Gi"
 }

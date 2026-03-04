@@ -148,33 +148,116 @@ output "rules" {
     }) : "{}"
 }
 
+
+locals {
+  vector_control_plane_tolerations = [
+    {
+      key = "node-role.kubernetes.io/control-plane"
+      operator = "Exists"
+      effect = "NoSchedule"
+    }
+  ]
+}
+
+output "vl_single_config" {
+  value = [
+    yamlencode({
+      vector = {
+        tolerations = flatten([local.vector_control_plane_tolerations, var.victorialogs_vector_tolerations])
+      }
+    }),
+    # minimal config for ram optimized usage + nodeport for ssh shell
+    <<-YML
+      vector:
+        enabled: true
+        customConfig:
+          transforms:
+            parser:
+              source: |
+                .log = parse_json(.message) ?? .message
+                .pve_stack = "${data.pxc_cloud_self.self.stack_name}"
+                del(.message)
+      server:
+        retentionMaxDiskUsagePercent: "85" # auto delete logs larger than
+        persistentVolume:
+          storageClassName: "${var.victorialogs_sc_name}"
+          size: "${var.victorialogs_pvc_size}"
+        ingress:
+          annotations:
+            "nginx.ingress.kubernetes.io/auth-type": "basic"
+            "nginx.ingress.kubernetes.io/auth-secret": "basic-auth-vlogs"
+            "nginx.ingress.kubernetes.io/auth-realm": "Authentication Required"
+            "nginx.ingress.kubernetes.io/proxy-body-size": "1G"
+          enabled: true
+          ingressClassName: nginx
+          hosts:
+            - name: ${var.victorialogs_host}
+              path:
+                - /
+              port: http
+          tls:
+            - secretName: cluster-tls
+              hosts:
+                - ${var.victorialogs_host}
+    YML
+  ]
+}
+
 output "log_rules" {
   value = <<-YAML
     server:
       config:
         alerts:
           groups:
-            - name: "Log Alerts"
+            - name: "Journald Log Alerts"
               type: vlogs
               rules:
                 - alert: "Errors High"
-                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") | stats by (kubernetes.container_name, kubernetes.pod_namespace, cluster_stack) count() total_errors | filter total_errors:>10'
+                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>10'
+                  labels:
+                    severity: info
+                    namespace: '{{ index $labels "pve_stack" }}'
+                  annotations:
+                    summary: 'Errors high on {{ index $labels "pve_stack" }}.'
+                    description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}.'
+                - alert: "Errors Stats"
+                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors'
+                  labels:
+                    severity: info
+                    namespace: '{{ index $labels "pve_stack" }}'
+                  annotations:
+                    summary: 'Errors on {{ index $labels "pve_stack" }}.'
+                    description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}.'
+                - alert: "InfoInhibitor"
+                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() errors_per_service | stats by (pve_stack) max(errors_per_service) max_errors | filter max_errors:<=10'
+                  labels:
+                    severity: none
+                    namespace: '{{ index $labels "pve_stack" }}'
+                  annotations:
+                    summary: "Inhibiting Log Info Alerts"
+                    description: "This is an extension to the prometheus stack default InfoInhibitor alert, extending to alerts from victoria metric logs. If any service in a pve stack has thrown more than 10 errors in the last hour, this will stop firing and the default alertmanager inhibit_rules will stop triggering, unsuppressing info log alerts for that entire stack."
+
+            - name: "K8S Log Alerts"
+              type: vlogs
+              rules:
+                - alert: "Errors High"
+                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") AND kubernetes.pod_namespace:* | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() total_errors | filter total_errors:>10'
                   labels:
                     severity: warning
                     namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
                   annotations:
                     summary: 'Errors high in {{ index $labels "kubernetes.pod_namespace" }}.'
-                    description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "cluster_stack" }}.'
+                    description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
                 - alert: "Errors Stats"
-                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") | stats by (kubernetes.container_name, kubernetes.pod_namespace, cluster_stack) count() as total_errors'
+                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") AND kubernetes.pod_namespace:* | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() as total_errors'
                   labels:
                     severity: info
                     namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
                   annotations:
                     summary: 'Errors in {{ index $labels "kubernetes.pod_namespace" }}.'
-                    description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "cluster_stack" }}.'
+                    description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
                 - alert: "InfoInhibitor"
-                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") | stats by (kubernetes.pod_namespace, kubernetes.container_name, cluster_stack) count() errors_per_pod | stats by (kubernetes.pod_namespace, cluster_stack) max(errors_per_pod) max_errors | filter max_errors:<=10'
+                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") AND kubernetes.pod_namespace:* | stats by (kubernetes.pod_namespace, kubernetes.container_name, pve_stack) count() errors_per_pod | stats by (kubernetes.pod_namespace, pve_stack) max(errors_per_pod) max_errors | filter max_errors:<=10'
                   labels:
                     severity: none
                     namespace: '{{ index $labels "kubernetes.pod_namespace" }}'

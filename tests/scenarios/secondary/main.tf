@@ -83,6 +83,10 @@ module "tf_monitoring" {
   insecure_tls = true
 
   victorialogs_sc_name = "openebs-hostpath"
+
+  # for this to work the secondary cluster would also need ceph
+  # its not optional / toggable
+  # monitor_proxmox_cluster = true
 }
 
 data "pxc_pve_inventory" "inv" {

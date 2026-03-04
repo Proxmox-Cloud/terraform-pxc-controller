@@ -14,7 +14,7 @@ variable "victorialogs_sc_name" {
   default = ""
 }
 
-variable "victoria_logs_pvc_size" {
+variable "victorialogs_pvc_size" {
   type = string
   default = "10Gi"
 }
@@ -33,7 +33,7 @@ variable "grafana_subchart_values" {
 variable "monitor_proxmox_cluster" {
   type = bool
   default = false
-  description = "When set to true the underlying proxmox cluster will be monitored by this stack (inserts targets, rules and collect host logs)."
+  description = "When set to true the underlying proxmox cluster will be monitored by this stack (inserts targets, rules and collect host logs). This tries to collect ceph metrics aswell, so the proxmox cluster needs ceph setupped and running!"
 }
 
 variable "optional_scrape_pve_hosts" {
