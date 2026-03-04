@@ -215,7 +215,7 @@ output "log_rules" {
                 - alert: "Errors High"
                   expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>10'
                   labels:
-                    severity: info
+                    severity: warning
                     namespace: '{{ index $labels "pve_stack" }}'
                   annotations:
                     summary: 'Errors high on {{ index $labels "pve_stack" }}.'
