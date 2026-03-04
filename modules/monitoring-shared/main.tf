@@ -213,7 +213,7 @@ output "log_rules" {
               type: vlogs
               rules:
                 - alert: "Errors High"
-                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>10'
+                  expr: '_time:1h AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault)) AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>10'
                   labels:
                     severity: warning
                     namespace: '{{ index $labels "pve_stack" }}'
@@ -221,7 +221,7 @@ output "log_rules" {
                     summary: 'Errors high on {{ index $labels "pve_stack" }}.'
                     description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}.'
                 - alert: "Errors Stats"
-                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors'
+                  expr: '_time:1h AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault)) AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors'
                   labels:
                     severity: info
                     namespace: '{{ index $labels "pve_stack" }}'
@@ -229,7 +229,7 @@ output "log_rules" {
                     summary: 'Errors on {{ index $labels "pve_stack" }}.'
                     description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}.'
                 - alert: "InfoInhibitor"
-                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() errors_per_service | stats by (pve_stack) max(errors_per_service) max_errors | filter max_errors:<=10'
+                  expr: '_time:1h AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault)) AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() errors_per_service | stats by (pve_stack) max(errors_per_service) max_errors | filter max_errors:<=10'
                   labels:
                     severity: none
                     namespace: '{{ index $labels "pve_stack" }}'
@@ -241,7 +241,7 @@ output "log_rules" {
               type: vlogs
               rules:
                 - alert: "Errors High"
-                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") AND kubernetes.pod_namespace:* | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() total_errors | filter total_errors:>10'
+                  expr: '_time:1h AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault)) AND kubernetes.pod_namespace:* | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() total_errors | filter total_errors:>10'
                   labels:
                     severity: warning
                     namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
@@ -249,7 +249,7 @@ output "log_rules" {
                     summary: 'Errors high in {{ index $labels "kubernetes.pod_namespace" }}.'
                     description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
                 - alert: "Errors Stats"
-                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") AND kubernetes.pod_namespace:* | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() as total_errors'
+                  expr: '_time:1h AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault)) AND kubernetes.pod_namespace:* | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() as total_errors'
                   labels:
                     severity: info
                     namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
@@ -257,7 +257,7 @@ output "log_rules" {
                     summary: 'Errors in {{ index $labels "kubernetes.pod_namespace" }}.'
                     description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
                 - alert: "InfoInhibitor"
-                  expr: '_time:1h AND (panic OR exception OR fatal OR critical OR error OR "segfault") AND kubernetes.pod_namespace:* | stats by (kubernetes.pod_namespace, kubernetes.container_name, pve_stack) count() errors_per_pod | stats by (kubernetes.pod_namespace, pve_stack) max(errors_per_pod) max_errors | filter max_errors:<=10'
+                  expr: '_time:1h AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault)) AND kubernetes.pod_namespace:* | stats by (kubernetes.pod_namespace, kubernetes.container_name, pve_stack) count() errors_per_pod | stats by (kubernetes.pod_namespace, pve_stack) max(errors_per_pod) max_errors | filter max_errors:<=10'
                   labels:
                     severity: none
                     namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
