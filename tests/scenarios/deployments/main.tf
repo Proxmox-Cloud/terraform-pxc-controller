@@ -164,3 +164,53 @@ output "age_out" {
   value = jsondecode(data.pxc_cloud_secret.test_age.secret_data)
 }
 
+# fio benchmarking
+
+# fio --name=fsync-1 --filename=./testfile --size=4G --rw=randwrite --bs=4k --ioengine=libaio --fsync=1 --iodepth=4 --runtime=300 && rm ./testfile
+# fio --name=default --filename=./testfile --size=4G --rw=randwrite --bs=4k --ioengine=libaio --iodepth=4 --runtime=300 && rm ./testfile
+resource "kubernetes_persistent_volume_claim" "fio_pvc" {
+  metadata {
+    name      = "fio-data-pvc"
+    namespace = "default"
+  }
+  spec {
+    access_modes = ["ReadWriteOnce"]
+    resources {
+      requests = {
+        storage = "10Gi"
+      }
+    }
+  }
+}
+
+# Define the Pod
+resource "kubernetes_pod" "fio_tester" {
+  metadata {
+    name      = "fio-tester"
+    namespace = "default"
+    labels = {
+      app = "fio"
+    }
+  }
+
+  spec {
+    container {
+      name    = "fio-container"
+      image   = "dmonakhov/alpine-fio"
+      command = ["/bin/sh"]
+      args    = ["-c", "while true; do sleep 30; done"]
+      
+      volume_mount {
+        name       = "fio-storage"
+        mount_path = "/mnt/fio"
+      }
+    }
+
+    volume {
+      name = "fio-storage"
+      persistent_volume_claim {
+        claim_name = kubernetes_persistent_volume_claim.fio_pvc.metadata[0].name
+      }
+    }
+  }
+}
