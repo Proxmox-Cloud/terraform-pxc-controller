@@ -68,7 +68,7 @@ resource "pxc_cloud_secret" "vlogs_cluster_journald" {
   secret_name = "${data.pxc_cloud_self.self.stack_name}.${data.pxc_cloud_self.self.target_pve}-vlogs"
   secret_data = jsonencode({
     target_pve = data.pxc_cloud_self.self.target_pve # this becomes the vlogs database target for all
-    basic_pw = data.pxc_cloud_secret.vlogs_storage_node_pw.secret_data
+    basic_pw = jsondecode(data.pxc_cloud_secret.vlogs_storage_node_pw.secret_data).password
     host = var.victorialogs_host
   })
   secret_type = "vlogs-cluster-journald"
