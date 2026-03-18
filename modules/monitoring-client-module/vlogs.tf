@@ -65,7 +65,7 @@ resource "helm_release" "vmalert" {
 # for setting up journald log aggregation through vector systemd
 resource "pxc_cloud_secret" "vlogs_cluster_journald" {
   count = var.monitor_proxmox_cluster ? 1 : 0
-  secret_name = "${data.pxc_cloud_self.self.stack_name}.${data.pxc_cloud_self.self.target_pve}-vlogs"
+  secret_name = "${data.pxc_cloud_self.self.stack_name}.${data.pxc_cloud_self.self.target_pve}-vlogs-journald"
   secret_data = jsonencode({
     target_pve = data.pxc_cloud_self.self.target_pve # this becomes the vlogs database target for all
     basic_pw = jsondecode(data.pxc_cloud_secret.vlogs_storage_node_pw.secret_data).password
