@@ -29,7 +29,12 @@ def test_adm_pod_creation(get_k8s_api_v1, controller_scenario):
     ctrl_pods = v1.list_namespaced_pod(namespace="pve-cloud-controller").items
     assert ctrl_pods
 
-    ctrl_pods_restarts = {pod.metadata.name : sum(status.restart_count for status in pod.status.container_statuses) for pod in ctrl_pods}
+    ctrl_pods_restarts = {
+        pod.metadata.name: sum(
+            status.restart_count for status in pod.status.container_statuses
+        )
+        for pod in ctrl_pods
+    }
 
     logger.info(ctrl_pods_restarts)
 
@@ -75,9 +80,10 @@ def test_adm_pod_creation(get_k8s_api_v1, controller_scenario):
 
     for pod in ctrl_pods:
         assert pod.status.phase in ["Running", "Succeeded"]
-        sum_restarts = sum(status.restart_count for status in pod.status.container_statuses)
+        sum_restarts = sum(
+            status.restart_count for status in pod.status.container_statuses
+        )
         assert ctrl_pods_restarts[pod.metadata.name] <= sum_restarts
-
 
     v1.delete_namespace(name=namespace)
 
@@ -645,7 +651,12 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
     ctrl_pods = v1.list_namespaced_pod(namespace="pve-cloud-controller").items
     assert ctrl_pods
 
-    ctrl_pods_restarts = {pod.metadata.name : sum(status.restart_count for status in pod.status.container_statuses) for pod in ctrl_pods}
+    ctrl_pods_restarts = {
+        pod.metadata.name: sum(
+            status.restart_count for status in pod.status.container_statuses
+        )
+        for pod in ctrl_pods
+    }
 
     # test namespace and pod creation => admission controller success
     namespace = "pytest-harbor-namespace"
@@ -673,9 +684,7 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
 
     # poll the pod status
     while True:
-        pod_manifest = v1.read_namespaced_pod(
-            name="pytest-pod", namespace=namespace
-        )
+        pod_manifest = v1.read_namespaced_pod(name="pytest-pod", namespace=namespace)
 
         phase = pod_manifest.status.phase
         assert phase in ("Succeeded", "Running", "Pending", "Failed")
@@ -699,9 +708,10 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
 
     for pod in ctrl_pods:
         assert pod.status.phase in ["Running", "Succeeded"]
-        sum_restarts = sum(status.restart_count for status in pod.status.container_statuses)
+        sum_restarts = sum(
+            status.restart_count for status in pod.status.container_statuses
+        )
         assert ctrl_pods_restarts[pod.metadata.name] <= sum_restarts
-
 
     # cleanup
     v1.delete_namespace(name=namespace)
