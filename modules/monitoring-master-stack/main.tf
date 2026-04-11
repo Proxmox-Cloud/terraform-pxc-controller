@@ -24,6 +24,7 @@ module "mon_shared" {
   victorialogs_pvc_size = var.victorialogs_pvc_size
   victorialogs_sc_name = var.victorialogs_sc_name
   victorialogs_vector_tolerations = var.victorialogs_vector_tolerations
+  victorialogs_k8s_override_rules = var.victorialogs_k8s_override_rules
 }
 
 data "pxc_cloud_self" "self" {}

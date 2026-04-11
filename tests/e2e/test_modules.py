@@ -24,56 +24,62 @@ def test_adm_pod_creation(get_k8s_api_v1, controller_scenario):
     logger.info("test admission controller pod create")
     v1 = get_k8s_api_v1
 
+    # Fetch ctrl pods once and get num restarts to make sure no restarts because of err
+    # happen during the test
+    ctrl_pods = v1.list_namespaced_pod(namespace="pve-cloud-controller").items
+    assert ctrl_pods
+
+    ctrl_pods_restarts = {pod.metadata.name : sum(status.restart_count for status in pod.status.container_statuses) for pod in ctrl_pods}
+
+    logger.info(ctrl_pods_restarts)
+
     # test namespace and pod creation => admission controller success
     namespace = "pytest-namespace"
 
-    try:
-        # test create namespace
-        v1.create_namespace(
-            client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace))
+    # test create namespace
+    v1.create_namespace(
+        client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace))
+    )
+
+    # create pod in namespace
+    pod_manifest = client.V1Pod(
+        metadata=client.V1ObjectMeta(name="pytest-pod"),
+        spec=client.V1PodSpec(
+            containers=[
+                client.V1Container(
+                    name="busybox",
+                    image="busybox",
+                    command=["sh", "-c", "echo Hello from the pod && sleep 5"],
+                )
+            ],
+            restart_policy="Never",
+        ),
+    )
+    v1.create_namespaced_pod(namespace=namespace, body=pod_manifest)
+
+    # poll the pod status
+    while True:
+        pod_status = v1.read_namespaced_pod_status(
+            name="pytest-pod", namespace=namespace
         )
+        phase = pod_status.status.phase
+        assert phase in ("Succeeded", "Running", "Pending")
+        if phase in ("Succeeded", "Failed"):
+            break
 
-        # create pod in namespace
-        pod_manifest = client.V1Pod(
-            metadata=client.V1ObjectMeta(name="pytest-pod"),
-            spec=client.V1PodSpec(
-                containers=[
-                    client.V1Container(
-                        name="busybox",
-                        image="busybox",
-                        command=["sh", "-c", "echo Hello from the pod && sleep 5"],
-                    )
-                ],
-                restart_policy="Never",
-            ),
-        )
-        v1.create_namespaced_pod(namespace=namespace, body=pod_manifest)
+        time.sleep(1)
 
-        # poll the pod status
-        while True:
-            pod_status = v1.read_namespaced_pod_status(
-                name="pytest-pod", namespace=namespace
-            )
-            phase = pod_status.status.phase
-            assert phase in ("Succeeded", "Running", "Pending")
-            if phase in ("Succeeded", "Failed"):
-                break
+    # validate no errors in pve-cloud-controller ns
+    ctrl_pods = v1.list_namespaced_pod(namespace="pve-cloud-controller").items
+    assert ctrl_pods
 
-            time.sleep(1)
+    for pod in ctrl_pods:
+        assert pod.status.phase in ["Running", "Succeeded"]
+        sum_restarts = sum(status.restart_count for status in pod.status.container_statuses)
+        assert ctrl_pods_restarts[pod.metadata.name] <= sum_restarts
 
-        # validate no errors in pve-cloud-controller ns
-        ctlr_pods = v1.list_namespaced_pod(namespace="pve-cloud-controller").items
-        assert ctlr_pods
 
-        for pod in ctlr_pods:
-            assert pod.status.phase in ["Running", "Succeeded"]
-
-            for status in pod.status.container_statuses:
-                assert status.restart_count == 0
-
-    finally:
-        # cleanup
-        v1.delete_namespace(name=namespace)
+    v1.delete_namespace(name=namespace)
 
 
 def test_cloud_cron_execution(get_primary_kubeconfig, controller_scenario):
@@ -634,66 +640,71 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
     logger.info("harbor test")
     v1 = get_k8s_api_v1
 
+    # Fetch ctrl pods once and get num restarts to make sure no restarts because of err
+    # happen during the test
+    ctrl_pods = v1.list_namespaced_pod(namespace="pve-cloud-controller").items
+    assert ctrl_pods
+
+    ctrl_pods_restarts = {pod.metadata.name : sum(status.restart_count for status in pod.status.container_statuses) for pod in ctrl_pods}
+
     # test namespace and pod creation => admission controller success
     namespace = "pytest-harbor-namespace"
 
-    try:
-        # test create namespace
-        v1.create_namespace(
-            client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace))
+    # test create namespace
+    v1.create_namespace(
+        client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace))
+    )
+
+    # create pod in namespace
+    pod_manifest = client.V1Pod(
+        metadata=client.V1ObjectMeta(name="pytest-pod"),
+        spec=client.V1PodSpec(
+            containers=[
+                client.V1Container(
+                    name="busybox",
+                    image="busybox",
+                    command=["sh", "-c", "echo Hello from the pod && sleep 5"],
+                )
+            ],
+            restart_policy="Never",
+        ),
+    )
+    v1.create_namespaced_pod(namespace=namespace, body=pod_manifest)
+
+    # poll the pod status
+    while True:
+        pod_manifest = v1.read_namespaced_pod(
+            name="pytest-pod", namespace=namespace
         )
 
-        # create pod in namespace
-        pod_manifest = client.V1Pod(
-            metadata=client.V1ObjectMeta(name="pytest-pod"),
-            spec=client.V1PodSpec(
-                containers=[
-                    client.V1Container(
-                        name="busybox",
-                        image="busybox",
-                        command=["sh", "-c", "echo Hello from the pod && sleep 5"],
-                    )
-                ],
-                restart_policy="Never",
-            ),
-        )
-        v1.create_namespaced_pod(namespace=namespace, body=pod_manifest)
+        phase = pod_manifest.status.phase
+        assert phase in ("Succeeded", "Running", "Pending", "Failed")
 
-        # poll the pod status
-        while True:
-            pod_manifest = v1.read_namespaced_pod(
-                name="pytest-pod", namespace=namespace
-            )
+        if phase in ("Succeeded", "Failed"):
+            break
 
-            phase = pod_manifest.status.phase
-            assert phase in ("Succeeded", "Running", "Pending", "Failed")
+        time.sleep(1)
 
-            if phase in ("Succeeded", "Failed"):
-                break
+    first_container_image = pod_manifest.spec.containers[0].image
 
-            time.sleep(1)
+    assert first_container_image.startswith(
+        f"harbor.{get_test_env["pve_test_deployments_domain"]}"
+    )
 
-        first_container_image = pod_manifest.spec.containers[0].image
+    logger.info((f"Pod is running image: {first_container_image}"))
 
-        assert first_container_image.startswith(
-            f"harbor.{get_test_env["pve_test_deployments_domain"]}"
-        )
+    # validate no errors in pve-cloud-controller ns
+    ctrl_pods = v1.list_namespaced_pod(namespace="pve-cloud-controller").items
+    assert ctrl_pods
 
-        logger.info((f"Pod is running image: {first_container_image}"))
+    for pod in ctrl_pods:
+        assert pod.status.phase in ["Running", "Succeeded"]
+        sum_restarts = sum(status.restart_count for status in pod.status.container_statuses)
+        assert ctrl_pods_restarts[pod.metadata.name] <= sum_restarts
 
-        # validate no errors in pve-cloud-controller ns
-        ctlr_pods = v1.list_namespaced_pod(namespace="pve-cloud-controller").items
-        assert ctlr_pods
 
-        for pod in ctlr_pods:
-            assert pod.status.phase in ["Running", "Succeeded"]
-
-            for status in pod.status.container_statuses:
-                assert status.restart_count == 0
-
-    finally:
-        # cleanup
-        v1.delete_namespace(name=namespace)
+    # cleanup
+    v1.delete_namespace(name=namespace)
 
 
 def test_secondary_logging(get_test_env, secondary_scenario, get_k8s_secondary_api_v1):

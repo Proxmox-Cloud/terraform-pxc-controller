@@ -76,3 +76,13 @@ variable "victorialogs_vector_tolerations" {
   description = "Extra tolerations for vector log collector daemonset."
   default =  []
 }
+
+variable "victorialogs_k8s_override_rules" {
+  type = map(string)
+  default = {}
+  description = <<-EOT
+    Here you can write specialized log alerting rules for specific namespaces (key of the map). Any namespaces defined here will no longer be subject to the default 
+    log alerting rules. They keys specified will be the k8s namespace, while the value should be a yaml string containing a list of alerting rules for 
+    victoria-metrics-alert chart, they will be injected into server.config.alerts.groups[].rules[].
+  EOT
+}

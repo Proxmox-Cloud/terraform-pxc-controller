@@ -203,67 +203,42 @@ output "vl_single_config" {
   ]
 }
 
+
+locals {
+  # base generic filter for catching errors, this will be overwritten by more speicific rules
+  error_base_filter = "(i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault))"
+
+  # for some generic namespaces we define overwrites here, this only works though for deployments that are part of proxmox clouds core deployments
+  k8s_ns_specific_base_rules = {
+    "nginx-ingress" = <<-YAML
+      - alert: "Errors High"
+        expr: '_time:1h AND kubernetes.pod_namespace: "nginx-ingress" and stream: "stderr" | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() total_errors | filter total_errors:>10'
+        labels:
+          severity: warning
+          namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
+        annotations:
+          summary: 'Errors high in {{ index $labels "kubernetes.pod_namespace" }}.'
+          description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
+      - alert: "Errors Stats"
+        expr: '_time:1h AND kubernetes.pod_namespace: "nginx-ingress" and stream: "stderr" | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() as total_errors'
+        labels:
+          severity: info
+          namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
+        annotations:
+          summary: 'Errors in {{ index $labels "kubernetes.pod_namespace" }}.'
+          description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
+    YAML
+  }
+
+  # here we build the filter for the default rules
+  k8s_base_exclude_ns = concat(keys(local.k8s_ns_specific_base_rules), keys(var.victorialogs_k8s_override_rules))
+  k8s_ns_filter = "kubernetes.pod_namespace:* and !kubernetes.pod_namespace: IN(${join(", ", [for ns in local.k8s_base_exclude_ns : "\"${ns}\""])})"
+}
+
 output "log_rules" {
-  value = <<-YAML
-    server:
-      config:
-        alerts:
-          groups:
-            - name: "Journald Log Alerts"
-              type: vlogs
-              rules:
-                - alert: "Errors High"
-                  expr: '_time:1h AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault)) AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>10'
-                  labels:
-                    severity: warning
-                    namespace: '{{ index $labels "pve_stack" }}'
-                  annotations:
-                    summary: 'Errors high on {{ index $labels "pve_stack" }}.'
-                    description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}.'
-                - alert: "Errors Stats"
-                  expr: '_time:1h AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault)) AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors'
-                  labels:
-                    severity: info
-                    namespace: '{{ index $labels "pve_stack" }}'
-                  annotations:
-                    summary: 'Errors on {{ index $labels "pve_stack" }}.'
-                    description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}.'
-                - alert: "InfoInhibitor"
-                  expr: '_time:1h AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault)) AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() errors_per_service | stats by (pve_stack) max(errors_per_service) max_errors | filter max_errors:<=10'
-                  labels:
-                    severity: none
-                    namespace: '{{ index $labels "pve_stack" }}'
-                  annotations:
-                    summary: "Inhibiting Log Info Alerts"
-                    description: "This is an extension to the prometheus stack default InfoInhibitor alert, extending to alerts from victoria metric logs. If any service in a pve stack has thrown more than 10 errors in the last hour, this will stop firing and the default alertmanager inhibit_rules will stop triggering, unsuppressing info log alerts for that entire stack."
-
-            - name: "K8S Log Alerts"
-              type: vlogs
-              rules:
-                - alert: "Errors High"
-                  expr: '_time:1h AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault)) AND kubernetes.pod_namespace:* | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() total_errors | filter total_errors:>10'
-                  labels:
-                    severity: warning
-                    namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
-                  annotations:
-                    summary: 'Errors high in {{ index $labels "kubernetes.pod_namespace" }}.'
-                    description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
-                - alert: "Errors Stats"
-                  expr: '_time:1h AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault)) AND kubernetes.pod_namespace:* | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() as total_errors'
-                  labels:
-                    severity: info
-                    namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
-                  annotations:
-                    summary: 'Errors in {{ index $labels "kubernetes.pod_namespace" }}.'
-                    description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
-                - alert: "InfoInhibitor"
-                  expr: '_time:1h AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault)) AND kubernetes.pod_namespace:* | stats by (kubernetes.pod_namespace, kubernetes.container_name, pve_stack) count() errors_per_pod | stats by (kubernetes.pod_namespace, pve_stack) max(errors_per_pod) max_errors | filter max_errors:<=10'
-                  labels:
-                    severity: none
-                    namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
-                  annotations:
-                    summary: "Inhibiting Log Info Alerts"
-                    description: "This is an extension to the prometheus stack default InfoInhibitor alert, extending to alerts from victoria metric logs. If any pod in a namespace has thrown more than 10 errors in the last hour, this will stop firing and the default alertmanager inhibit_rules will stop triggering, unsuppressing info log alerts for that entire namespace."
-
-  YAML
+  value = templatefile("${path.module}/vlogs-alert-rules.yaml.tftpl", {
+    error_base_filter = local.error_base_filter
+    k8s_ns_filter     = local.k8s_ns_filter
+    k8s_ns_specific = merge(local.k8s_ns_specific_base_rules, var.victorialogs_k8s_override_rules)
+  })
 }

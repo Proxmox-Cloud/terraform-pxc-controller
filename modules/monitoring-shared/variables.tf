@@ -62,3 +62,9 @@ variable "victorialogs_pvc_size" {
   type = string
   default = "10Gi"
 }
+
+# todo: implement systemd override rules aswell
+variable "victorialogs_k8s_override_rules" {
+  type = map(string)
+  default = {}
+}
