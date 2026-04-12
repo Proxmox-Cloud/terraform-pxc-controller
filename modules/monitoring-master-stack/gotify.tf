@@ -47,7 +47,7 @@ resource "pxc_gotify_app" "master_app" {
   depends_on = [ time_sleep.gotify_startup ]
   gotify_host = "gotify.${var.ingress_apex}"
   gotify_admin_pw = random_password.gotify_admin_pw.result
-  app_name = "${data.pxc_cloud_self.self.target_pve}"
+  app_name = "${data.pxc_cloud_self.self.stack_name}.${data.pxc_cloud_self.self.target_pve}"
   allow_insecure = var.insecure_tls
 }
 
