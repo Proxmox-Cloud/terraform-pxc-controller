@@ -200,6 +200,7 @@ output "vl_single_config" {
               hosts:
                 - ${var.victorialogs_host}
     YML
+    , var.victorialogs_extra_helm_values
   ]
 }
 

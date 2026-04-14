@@ -76,3 +76,9 @@ variable "victorialogs_k8s_override_rules" {
     they will be injected into server.config.alerts.groups[].rules[].
   EOT
 }
+
+variable "victorialogs_extra_helm_values" {
+  type = string
+  default = "{}"
+  description = "Extra value that will be added to the victorialogs single db helm deployment. Needs to be a yaml string."
+}
