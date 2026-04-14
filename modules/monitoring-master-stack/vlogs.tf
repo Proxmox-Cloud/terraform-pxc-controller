@@ -52,7 +52,7 @@ resource "helm_release" "vlogs_ml" {
         for vlogs_client in jsondecode(data.pxc_cloud_secrets.vlogs_clients.secrets_data) : vlogs_client.host
       ], ["vlogs.${var.ingress_apex}"]) # we cant go direct because extraargs tls sets it for all storage nodes
     }),
-    victorialogs_extra_helm_values
+    var.victorialogs_extra_helm_values
   ]
 
   timeout = 1200
