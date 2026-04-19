@@ -25,6 +25,7 @@ module "mon_shared" {
   victorialogs_sc_name = var.victorialogs_sc_name
   victorialogs_vector_tolerations = var.victorialogs_vector_tolerations
   victorialogs_k8s_override_rules = var.victorialogs_k8s_override_rules
+  victorialogs_systemd_override_rules = var.victorialogs_systemd_override_rules
   victorialogs_extra_helm_values = var.victorialogs_extra_helm_values
 }
 

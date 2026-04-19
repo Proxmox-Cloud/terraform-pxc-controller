@@ -87,6 +87,12 @@ variable "victorialogs_k8s_override_rules" {
   EOT
 }
 
+variable "victorialogs_systemd_override_rules" {
+  type = map(string)
+  default = {}
+  description = "Same as var.victorialogs_k8s_override_rules but for the systemd services."
+}
+
 variable "victorialogs_extra_helm_values" {
   type = string
   default = "{}"

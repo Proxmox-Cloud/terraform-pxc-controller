@@ -2,11 +2,19 @@ server:
   config:
     alerts:
       groups:
+        # here are our specific journald service based rules
+%{ for service, rules in journald_service_specific }
+        - name: "Journald Log ${service} Alerts"
+          type: vlogs
+          rules:
+            ${indent(12, rules)}
+%{ endfor }
+
         - name: "Journald Log Base Alerts"
           type: vlogs
           rules:
             - alert: "Errors High"
-              expr: '_time:1h AND ${error_base_filter} AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>10'
+              expr: '_time:1h AND ${error_base_filter} AND ${journald_service_filter} | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>10'
               labels:
                 severity: warning
                 namespace: '{{ index $labels "pve_stack" }}'
@@ -14,7 +22,7 @@ server:
                 summary: 'Errors high on {{ index $labels "pve_stack" }}.'
                 description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}.'
             - alert: "Errors Stats"
-              expr: '_time:1h AND ${error_base_filter} AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors'
+              expr: '_time:1h AND ${error_base_filter} AND ${journald_service_filter} | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors'
               labels:
                 severity: info
                 namespace: '{{ index $labels "pve_stack" }}'

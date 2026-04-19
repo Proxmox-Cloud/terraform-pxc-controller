@@ -234,6 +234,32 @@ locals {
   # here we build the filter for the default rules
   k8s_base_exclude_ns = concat(keys(local.k8s_ns_specific_base_rules), keys(var.victorialogs_k8s_override_rules))
   k8s_ns_filter = "kubernetes.pod_namespace:* and !kubernetes.pod_namespace: IN(${join(", ", [for ns in local.k8s_base_exclude_ns : "\"${ns}\""])})"
+
+  # do the same for journald services
+  journald_service_specific_base_rules = {
+    # named errors use syslogs priorities, anything below 5 is warning / error / critical
+    "named.service" = <<-YAML
+      - alert: "Errors High"
+        expr: '_time:1h _SYSTEMD_UNIT: "named.service" and PRIORITY: <=4 | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>10'
+        labels:
+          severity: warning
+          namespace: '{{ index $labels "pve_stack" }}'
+        annotations:
+          summary: 'Errors high on {{ index $labels "pve_stack" }}.'
+          description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}.'
+      - alert: "Errors Stats"
+        expr: '_time:1h _SYSTEMD_UNIT: "named.service" and PRIORITY: <=4 | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors'
+        labels:
+          severity: info
+          namespace: '{{ index $labels "pve_stack" }}'
+        annotations:
+          summary: 'Errors on {{ index $labels "pve_stack" }}.'
+          description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}.'
+    YAML
+  }
+
+  journald_base_exclude_services = concat(keys(local.journald_service_specific_base_rules), keys(var.victorialogs_systemd_override_rules))
+  journald_service_filter = "_SYSTEMD_UNIT:* and !_SYSTEMD_UNIT: IN(${join(", ", [for service in local.journald_base_exclude_services : "\"${service}\""])})"
 }
 
 output "log_rules" {
@@ -241,5 +267,7 @@ output "log_rules" {
     error_base_filter = local.error_base_filter
     k8s_ns_filter     = local.k8s_ns_filter
     k8s_ns_specific = merge(local.k8s_ns_specific_base_rules, var.victorialogs_k8s_override_rules)
+    journald_service_filter = local.journald_service_filter
+    journald_service_specific = merge(local.journald_service_specific_base_rules, var.victorialogs_systemd_override_rules)
   })
 }
