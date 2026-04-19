@@ -229,6 +229,26 @@ locals {
           summary: 'Errors in {{ index $labels "kubernetes.pod_namespace" }}.'
           description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
     YAML
+    # bug / bad code in k8s 1.32 for controller manager logging fallback as error, exclude to keep alerts clean
+    "kube-system" = <<-YAML
+      - alert: "Errors High"
+        expr: '_time:1h AND ${local.error_base_filter} AND !"falling back" AND kubernetes.pod_namespace: "kube-system" | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() total_errors | filter total_errors:>10'
+        labels:
+          severity: warning
+          namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
+        annotations:
+          summary: 'Errors high in {{ index $labels "kubernetes.pod_namespace" }}.'
+          description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
+      - alert: "Errors Stats"
+        expr: '_time:1h AND ${local.error_base_filter} AND !"falling back" AND kubernetes.pod_namespace: "kube-system" | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() as total_errors'
+        labels:
+          severity: info
+          namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
+        annotations:
+          summary: 'Errors in {{ index $labels "kubernetes.pod_namespace" }}.'
+          description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
+    YAML
+
   }
 
   # here we build the filter for the default rules
