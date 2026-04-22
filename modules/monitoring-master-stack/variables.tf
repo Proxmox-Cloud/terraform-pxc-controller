@@ -77,7 +77,7 @@ variable "victorialogs_vector_tolerations" {
   default =  []
 }
 
-variable "victorialogs_k8s_override_rules" {
+variable "victorialogs_k8s_override_expressions" {
   type = map(string)
   default = {}
   description = <<-EOT
@@ -87,10 +87,10 @@ variable "victorialogs_k8s_override_rules" {
   EOT
 }
 
-variable "victorialogs_systemd_override_rules" {
+variable "victorialogs_systemd_override_expressions" {
   type = map(string)
   default = {}
-  description = "Same as var.victorialogs_k8s_override_rules but for the systemd services."
+  description = "Same as var.victorialogs_k8s_override_expressions but for the systemd services."
 }
 
 variable "victorialogs_extra_helm_values" {

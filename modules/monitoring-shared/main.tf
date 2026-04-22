@@ -210,75 +210,23 @@ locals {
   error_base_filter = "(i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault))"
 
   # for some generic namespaces we define overwrites here, this only works though for deployments that are part of proxmox clouds core deployments
-  k8s_ns_specific_base_rules = {
-    "nginx-ingress" = <<-YAML
-      - alert: "Errors High"
-        expr: '_time:1h AND kubernetes.pod_namespace: "nginx-ingress" and stream: "stderr" | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() total_errors | filter total_errors:>10'
-        labels:
-          severity: warning
-          namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
-        annotations:
-          summary: 'Errors high in {{ index $labels "kubernetes.pod_namespace" }}.'
-          description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
-      - alert: "Errors Stats"
-        expr: '_time:1h AND kubernetes.pod_namespace: "nginx-ingress" and stream: "stderr" | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() as total_errors'
-        labels:
-          severity: info
-          namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
-        annotations:
-          summary: 'Errors in {{ index $labels "kubernetes.pod_namespace" }}.'
-          description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
-    YAML
+  k8s_ns_specific_base_expressions = {
+    "nginx-ingress" = "kubernetes.pod_namespace: \"nginx-ingress\" and stream: \"stderr\""
     # bug / bad code in k8s 1.32 for controller manager logging fallback as error, exclude to keep alerts clean
-    "kube-system" = <<-YAML
-      - alert: "Errors High"
-        expr: '_time:1h AND ${local.error_base_filter} AND !"falling back" AND kubernetes.pod_namespace: "kube-system" | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() total_errors | filter total_errors:>10'
-        labels:
-          severity: warning
-          namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
-        annotations:
-          summary: 'Errors high in {{ index $labels "kubernetes.pod_namespace" }}.'
-          description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
-      - alert: "Errors Stats"
-        expr: '_time:1h AND ${local.error_base_filter} AND !"falling back" AND kubernetes.pod_namespace: "kube-system" | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() as total_errors'
-        labels:
-          severity: info
-          namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
-        annotations:
-          summary: 'Errors in {{ index $labels "kubernetes.pod_namespace" }}.'
-          description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
-    YAML
-
+    "kube-system" = "${local.error_base_filter} AND !\"falling back\" AND kubernetes.pod_namespace: \"kube-system\""
   }
 
   # here we build the filter for the default rules
-  k8s_base_exclude_ns = concat(keys(local.k8s_ns_specific_base_rules), keys(var.victorialogs_k8s_override_rules))
+  k8s_base_exclude_ns = concat(keys(local.k8s_ns_specific_base_expressions), keys(var.victorialogs_k8s_override_expressions))
   k8s_ns_filter = "kubernetes.pod_namespace:* and !kubernetes.pod_namespace: IN(${join(", ", [for ns in local.k8s_base_exclude_ns : "\"${ns}\""])})"
 
   # do the same for journald services
-  journald_service_specific_base_rules = {
+  journald_service_specific_base_expressions = {
     # named errors use syslogs priorities, anything below 5 is warning / error / critical
-    "named.service" = <<-YAML
-      - alert: "Errors High"
-        expr: '_time:1h _SYSTEMD_UNIT: "named.service" and PRIORITY: <=4 | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>10'
-        labels:
-          severity: warning
-          namespace: '{{ index $labels "pve_stack" }}'
-        annotations:
-          summary: 'Errors high on {{ index $labels "pve_stack" }}.'
-          description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}.'
-      - alert: "Errors Stats"
-        expr: '_time:1h _SYSTEMD_UNIT: "named.service" and PRIORITY: <=4 | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors'
-        labels:
-          severity: info
-          namespace: '{{ index $labels "pve_stack" }}'
-        annotations:
-          summary: 'Errors on {{ index $labels "pve_stack" }}.'
-          description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}.'
-    YAML
+    "named.service" = "_SYSTEMD_UNIT: \"named.service\" and PRIORITY: <=4"
   }
 
-  journald_base_exclude_services = concat(keys(local.journald_service_specific_base_rules), keys(var.victorialogs_systemd_override_rules))
+  journald_base_exclude_services = concat(keys(local.journald_service_specific_base_expressions), keys(var.victorialogs_systemd_override_expressions))
   journald_service_filter = "_SYSTEMD_UNIT:* and !_SYSTEMD_UNIT: IN(${join(", ", [for service in local.journald_base_exclude_services : "\"${service}\""])})"
 }
 
@@ -286,8 +234,8 @@ output "log_rules" {
   value = templatefile("${path.module}/vlogs-alert-rules.yaml.tftpl", {
     error_base_filter = local.error_base_filter
     k8s_ns_filter     = local.k8s_ns_filter
-    k8s_ns_specific = merge(local.k8s_ns_specific_base_rules, var.victorialogs_k8s_override_rules)
+    k8s_ns_specific = merge(local.k8s_ns_specific_base_expressions, var.victorialogs_k8s_override_expressions)
     journald_service_filter = local.journald_service_filter
-    journald_service_specific = merge(local.journald_service_specific_base_rules, var.victorialogs_systemd_override_rules)
+    journald_service_specific = merge(local.journald_service_specific_base_expressions, var.victorialogs_systemd_override_expressions)
   })
 }

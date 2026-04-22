@@ -63,12 +63,12 @@ variable "victorialogs_pvc_size" {
   default = "10Gi"
 }
 
-variable "victorialogs_k8s_override_rules" {
+variable "victorialogs_k8s_override_expressions" {
   type = map(string)
   default = {}
 }
 
-variable "victorialogs_systemd_override_rules" {
+variable "victorialogs_systemd_override_expressions" {
   type = map(string)
   default = {}
 }
