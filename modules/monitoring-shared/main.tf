@@ -223,7 +223,13 @@ locals {
   # do the same for journald services
   journald_service_specific_base_expressions = {
     # named errors use syslogs priorities, anything below 5 is warning / error / critical
-    "named.service" = "_SYSTEMD_UNIT: \"named.service\" and PRIORITY: <=4"
+    "named.service" = "_SYSTEMD_UNIT: named.service and PRIORITY: <=4"
+    # etcd fires warning messages on health checks, error comes in at priority 6 (Informational)
+    # todo: should be optimized in prometheus alert 
+    "etcd.service" = "_SYSTEMD_UNIT: etcd.service and PRIORITY: <=5"
+    # kubelet service / containerd also logs a bunch of errors with priority 6
+    "kubelet.service" = "_SYSTEMD_UNIT: kubelet.service and PRIORITY: <=5"
+    "containerd.service" = "_SYSTEMD_UNIT: containerd.service and PRIORITY: <=5"
   }
 
   journald_base_exclude_services = concat(keys(local.journald_service_specific_base_expressions), keys(var.victorialogs_systemd_override_expressions))
