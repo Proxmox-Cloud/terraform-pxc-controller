@@ -213,7 +213,8 @@ locals {
   k8s_ns_specific_base_expressions = {
     "nginx-ingress" = "kubernetes.pod_namespace: \"nginx-ingress\" and stream: \"stderr\""
     # bug / bad code in k8s 1.32 for controller manager logging fallback as error, exclude to keep alerts clean
-    "kube-system" = "${local.error_base_filter} AND !\"falling back\" AND kubernetes.pod_namespace: \"kube-system\""
+    # also at startup W0423 warnings that dont affect functionality
+    "kube-system" = "${local.error_base_filter} AND !\"falling back\" AND !\"W0423\" AND kubernetes.pod_namespace: \"kube-system\""
   }
 
   # here we build the filter for the default rules
