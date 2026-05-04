@@ -7,6 +7,14 @@ server:
         - name: "Journald Log ${service} Alerts"
           type: vlogs
           rules:
+            - alerts: "Errors Critical"
+              expr: '_time:1h AND ${base_expr} | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>500'
+              labels:
+                severity: critical
+                namespace: '{{ index $labels "pve_stack" }}'
+              annotations:
+                summary: 'Errors critical on {{ index $labels "pve_stack" }}.'
+                description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}!'
             - alert: "Errors High"
               expr: '_time:1h AND ${base_expr} | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>10'
               labels:
@@ -36,6 +44,14 @@ server:
         - name: "Journald Log Base Alerts"
           type: vlogs
           rules:
+            - alerts: "Errors Critical"
+              expr: '_time:1h AND ${error_base_filter} AND ${journald_service_filter} | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>500'
+              labels:
+                severity: critical
+                namespace: '{{ index $labels "pve_stack" }}'
+              annotations:
+                summary: 'Errors critical on {{ index $labels "pve_stack" }}.'
+                description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}!'
             - alert: "Errors High"
               expr: '_time:1h AND ${error_base_filter} AND ${journald_service_filter} | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>10'
               labels:
@@ -66,6 +82,14 @@ server:
         - name: "K8S Log ${namespace} Alerts"
           type: vlogs
           rules:
+            - alert: "Errors Critical"
+              expr: '_time:1h AND ${base_expr} | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() total_errors | filter total_errors:>500'
+              labels:
+                severity: critical
+                namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
+              annotations:
+                summary: 'Errors critical in {{ index $labels "kubernetes.pod_namespace" }}.'
+                description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}!'
             - alert: "Errors High"
               expr: '_time:1h AND ${base_expr} | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() total_errors | filter total_errors:>10'
               labels:
@@ -96,6 +120,14 @@ server:
         - name: "K8S Log Base Alerts" 
           type: vlogs
           rules:
+            - alert: "Errors Critical"
+              expr: '_time:1h AND ${error_base_filter} AND ${k8s_ns_filter} | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() total_errors | filter total_errors:>500'
+              labels:
+                severity: critical
+                namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
+              annotations:
+                summary: 'Errors critical in {{ index $labels "kubernetes.pod_namespace" }}.'
+                description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}!'
             - alert: "Errors High"
               expr: '_time:1h AND ${error_base_filter} AND ${k8s_ns_filter} | stats by (kubernetes.container_name, kubernetes.pod_namespace, pve_stack) count() total_errors | filter total_errors:>10'
               labels:
