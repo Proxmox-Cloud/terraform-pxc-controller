@@ -7,7 +7,7 @@ server:
         - name: "Journald Log ${service} Alerts"
           type: vlogs
           rules:
-            - alerts: "Errors Critical"
+            - alert: "Errors Critical"
               expr: '_time:1h AND ${base_expr} | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>500'
               labels:
                 severity: critical
@@ -44,7 +44,7 @@ server:
         - name: "Journald Log Base Alerts"
           type: vlogs
           rules:
-            - alerts: "Errors Critical"
+            - alert: "Errors Critical"
               expr: '_time:1h AND ${error_base_filter} AND ${journald_service_filter} | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as total_errors | filter total_errors:>500'
               labels:
                 severity: critical
