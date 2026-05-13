@@ -85,6 +85,18 @@ output "scrape_config" {
                     ])
                 },
                 {
+                    job_name = "pve-node-smartctl"
+                    static_configs = flatten([
+                        for host, host_values in local.cluster_hosts : {
+                            targets = [ "${host_values.ansible_host}:9633" ]
+                            labels = {
+                                "host" = "${host}.${local.cluster_vars.pve_cluster_name}"
+                                "optional" = contains(var.optional_scrape_pve_hosts, "${host}.${local.cluster_vars.pve_cluster_name}")
+                            }
+                        }
+                    ])
+                },
+                {
                     job_name = "pve-node-btrfs"
                     fallback_scrape_protocol = "PrometheusText0.0.4"
                     static_configs = flatten([
