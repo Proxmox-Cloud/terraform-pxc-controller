@@ -78,3 +78,11 @@ variable "victorialogs_extra_helm_values" {
   default = "{}"
   description = "Extra value that will be added to the victorialogs single db helm deployment. Needs to be a yaml string."
 }
+
+variable "node_selector" {
+  type = map(string)
+}
+
+variable "tolerations" {
+  type = list(map(string))
+}

@@ -87,6 +87,19 @@ module "tf_monitoring" {
   # for this to work the secondary cluster would also need ceph
   # its not optional / toggable
   # monitor_proxmox_cluster = true
+
+  node_selector = {
+    "kubernetes.io/os" = "linux"
+  }
+
+  tolerations = [
+    {
+      "key" = "example"
+      "operator" = "Equal"
+      "value" = "test"
+      "effect" = "NoSchedule"
+     }
+  ]
 }
 
 data "pxc_pve_inventory" "inv" {

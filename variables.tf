@@ -74,3 +74,15 @@ variable "log_level" {
   type = string
   default = "INFO"
 }
+
+variable "node_selector" {
+  type = map(string)
+  default = null
+  description = "Optional node selector for controller deployments/jobs."
+}
+
+variable "tolerations" {
+  type = list(map(string))
+  default = null
+  description = "Tolerations to add to all controller deployments/jobs."
+}

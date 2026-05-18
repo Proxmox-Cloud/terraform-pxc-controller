@@ -41,6 +41,19 @@ resource "kubernetes_deployment" "alertmanager_gotify_bridge" {
       }
 
       spec {
+        node_selector = var.node_selector
+        
+        dynamic "toleration" {
+          for_each = var.tolerations != null ? var.tolerations : []
+
+          content {
+            key      = lookup(toleration.value, "key", null)
+            operator = lookup(toleration.value, "operator", null)
+            value    = lookup(toleration.value, "value", null)
+            effect   = lookup(toleration.value, "effect", null)
+          }
+        }
+
         container {
           name  = "alertmanager-gotify"
           image = "druggeri/alertmanager_gotify_bridge:latest"

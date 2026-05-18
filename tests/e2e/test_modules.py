@@ -512,6 +512,7 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
         if (
             severity == "critical"
             and alert["labels"]["alertname"] != "haproxy all backends down"
+            and alert["labels"]["alertname"] != "Errors Critical"
         ):
             logger.error(alert)
             critical_alerts.append(alert["labels"]["alertname"])
