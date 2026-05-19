@@ -170,7 +170,7 @@ locals {
     }
   ]
 }
-
+prometheusOperator.admissionWebhooks.patch.annotations
 output "tolerations_snippet" {
   value = <<-YAML
     %{ if var.node_selector != null || var.tolerations != null }
@@ -182,6 +182,16 @@ output "tolerations_snippet" {
     %{ if var.tolerations != null }
       tolerations:
         ${indent(4, yamlencode(var.tolerations))}
+    %{ endif }
+      admissionWebhooks:
+        patch:
+    %{ if var.node_selector != null }
+          nodeSelector:
+            ${indent(8, yamlencode(var.node_selector))}
+    %{ endif }
+    %{ if var.tolerations != null }
+          tolerations:
+            ${indent(8, yamlencode(var.tolerations))}
     %{ endif }
     %{ endif }
     %{ if var.node_selector != null || var.tolerations != null }
