@@ -170,7 +170,7 @@ locals {
     }
   ]
 }
-prometheusOperator.admissionWebhooks.patch.annotations
+
 output "tolerations_snippet" {
   value = <<-YAML
     %{ if var.node_selector != null || var.tolerations != null }
