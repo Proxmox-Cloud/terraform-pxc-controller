@@ -116,6 +116,14 @@ resource "kubernetes_manifest" "karma" {
           labels:
             app: karma
         spec:
+    %{ if var.node_selector != null }
+          nodeSelector:
+            ${indent(8, yamlencode(var.node_selector))}
+    %{ endif }
+    %{ if var.tolerations != null }
+          tolerations:
+            ${indent(8, yamlencode(var.tolerations))}
+    %{ endif }
           containers:
             - name: karma
               image: ghcr.io/prymitive/karma:latest

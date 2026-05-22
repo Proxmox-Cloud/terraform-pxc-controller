@@ -91,6 +91,14 @@ resource "kubernetes_manifest" "ns_watcher" {
             app.kubernetes.io/name: pve-cloud-ns-watcher
             app.kubernetes.io/version: '${local.cloud_controller_version}'
         spec:
+    %{ if var.node_selector != null }
+          nodeSelector:
+            ${indent(8, yamlencode(var.node_selector))}
+    %{ endif }
+    %{ if var.tolerations != null }
+          tolerations:
+            ${indent(8, yamlencode(var.tolerations))}
+    %{ endif }
           priorityClassName: system-cluster-critical
           containers:
             - name: watcher
@@ -139,6 +147,14 @@ resource "kubernetes_manifest" "pod_watcher" {
             app.kubernetes.io/name: pve-cloud-pod-watcher
             app.kubernetes.io/version: '${local.cloud_controller_version}'
         spec:
+    %{ if var.node_selector != null }
+          nodeSelector:
+            ${indent(8, yamlencode(var.node_selector))}
+    %{ endif }
+    %{ if var.tolerations != null }
+          tolerations:
+            ${indent(8, yamlencode(var.tolerations))}
+    %{ endif }
           containers:
             - name: watcher
               image: "${local.cloud_controller_image}:${local.cloud_controller_version}"
@@ -192,6 +208,14 @@ resource "kubernetes_manifest" "adm_deployment" {
             app.kubernetes.io/name: pve-cloud-adm
             app.kubernetes.io/version: '${local.cloud_controller_version}'
         spec:
+    %{ if var.node_selector != null }
+          nodeSelector:
+            ${indent(8, yamlencode(var.node_selector))}
+    %{ endif }
+    %{ if var.tolerations != null }
+          tolerations:
+            ${indent(8, yamlencode(var.tolerations))}
+    %{ endif }
           priorityClassName: system-cluster-critical
           volumes:
             - name: pve-cloud-adm-tls
@@ -409,6 +433,14 @@ resource "kubernetes_manifest" "cron" {
                 app.kubernetes.io/name: pve-cloud-cron
                 app.kubernetes.io/version: '${local.cloud_controller_version}'
             spec:
+    %{ if var.node_selector != null }
+              nodeSelector:
+                ${indent(12, yamlencode(var.node_selector))}
+    %{ endif }
+    %{ if var.tolerations != null }
+              tolerations:
+                ${indent(12, yamlencode(var.tolerations))}
+    %{ endif }
               restartPolicy: Never
               volumes:
                 - name: cluster-conf

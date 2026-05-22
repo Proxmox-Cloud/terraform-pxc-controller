@@ -171,6 +171,78 @@ locals {
   ]
 }
 
+output "tolerations_snippet" {
+  value = <<-YAML
+    %{ if var.node_selector != null || var.tolerations != null }
+    prometheusOperator:
+    %{ if var.node_selector != null }
+      nodeSelector:
+        ${indent(4, yamlencode(var.node_selector))}
+    %{ endif }
+    %{ if var.tolerations != null }
+      tolerations:
+        ${indent(4, yamlencode(var.tolerations))}
+    %{ endif }
+      admissionWebhooks:
+        patch:
+    %{ if var.node_selector != null }
+          nodeSelector:
+            ${indent(8, yamlencode(var.node_selector))}
+    %{ endif }
+    %{ if var.tolerations != null }
+          tolerations:
+            ${indent(8, yamlencode(var.tolerations))}
+    %{ endif }
+    %{ endif }
+    %{ if var.node_selector != null || var.tolerations != null }
+    prometheus:
+      prometheusSpec:
+    %{ if var.node_selector != null }
+        nodeSelector:
+          ${indent(6, yamlencode(var.node_selector))}
+    %{ endif }
+    %{ if var.tolerations != null }
+        tolerations:
+          ${indent(6, yamlencode(var.tolerations))}
+    %{ endif }
+    %{ endif }
+    %{ if var.node_selector != null || var.tolerations != null }
+    alertmanager:
+      alertmanagerSpec:
+    %{ if var.node_selector != null }
+        nodeSelector:
+          ${indent(6, yamlencode(var.node_selector))}
+    %{ endif }
+    %{ if var.tolerations != null }
+        tolerations:
+          ${indent(6, yamlencode(var.tolerations))}
+    %{ endif }
+    %{ endif }
+    %{ if var.node_selector != null || var.tolerations != null }
+    grafana:
+    %{ if var.node_selector != null }
+      nodeSelector:
+        ${indent(4, yamlencode(var.node_selector))}
+    %{ endif }
+    %{ if var.tolerations != null }
+      tolerations:
+        ${indent(4, yamlencode(var.tolerations))}
+    %{ endif }
+    %{ endif }
+    %{ if var.node_selector != null || var.tolerations != null }
+    kube-state-metrics:
+    %{ if var.node_selector != null }
+      nodeSelector:
+        ${indent(4, yamlencode(var.node_selector))}
+    %{ endif }
+    %{ if var.tolerations != null }
+      tolerations:
+        ${indent(4, yamlencode(var.tolerations))}
+    %{ endif }
+    %{ endif }
+  YAML
+}
+
 output "vl_single_config" {
   value = [
     yamlencode({
@@ -190,6 +262,14 @@ output "vl_single_config" {
                 .pve_stack = "${data.pxc_cloud_self.self.stack_name}"
                 del(.message)
       server:
+      %{ if var.node_selector != null }
+        nodeSelector:
+          ${indent(4, yamlencode(var.node_selector))}
+      %{ endif }
+      %{ if var.tolerations != null }
+        tolerations:
+          ${indent(4, yamlencode(var.tolerations))}
+      %{ endif }
         retentionMaxDiskUsagePercent: "85" # auto delete logs larger than
         persistentVolume:
           storageClassName: "${var.victorialogs_sc_name}"

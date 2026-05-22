@@ -26,6 +26,9 @@ module "mon_shared" {
   victorialogs_k8s_override_expressions = var.victorialogs_k8s_override_expressions
   victorialogs_systemd_override_expressions = var.victorialogs_systemd_override_expressions
   victorialogs_extra_helm_values = var.victorialogs_extra_helm_values
+
+  tolerations = var.tolerations
+  node_selector = var.node_selector
 }
 
 data "pxc_cloud_self" "self" {}
@@ -78,6 +81,7 @@ resource "helm_release" "kube_prom_stack" {
     yamlencode({
       grafana = var.grafana_subchart_values
     }), # custom values for grafana config (oidc pass)
+    module.mon_shared.tolerations_snippet,
     yamlencode({
       alertmanager = {
         # expose alertmanager via ingress for karma in master stack to fetch

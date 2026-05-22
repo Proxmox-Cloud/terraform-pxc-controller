@@ -42,9 +42,23 @@ module "controller" {
 
   log_level = "DEBUG"
 
+  node_selector = {
+    "kubernetes.io/os" = "linux"
+  }
+
+  tolerations = [
+    {
+      "key" = "example"
+      "operator" = "Equal"
+      "value" = "test"
+      "effect" = "NoSchedule"
+     }
+  ]
+
   # set harbor host if tls is available, needs valid certificate to perform testing
   harbor_mirror_host = contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_target_pve") && contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_stack_name") ? "harbor.${local.test_pve_conf["pve_test_deployments_domain"]}" : null
 }
+
 
 resource "kubernetes_namespace" "moto_mock" {
   metadata {

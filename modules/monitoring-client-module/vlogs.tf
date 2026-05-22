@@ -49,6 +49,14 @@ resource "helm_release" "vmalert" {
   values = [
     <<-YML
       server:
+      %{ if var.node_selector != null }
+        nodeSelector:
+          ${indent(4, yamlencode(var.node_selector))}
+      %{ endif }
+      %{ if var.tolerations != null }
+        tolerations:
+          ${indent(4, yamlencode(var.tolerations))}
+      %{ endif }
         datasource:
           url: "http://vlogs-victoria-logs-single-server:9428"
         notifier:

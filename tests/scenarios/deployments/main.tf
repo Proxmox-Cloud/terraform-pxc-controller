@@ -100,6 +100,19 @@ module "tf_monitoring" {
   # for testing
   insecure_tls = true
   alertmanger_e2e_ingress = true
+
+  node_selector = {
+    "kubernetes.io/os" = "linux"
+  }
+
+  tolerations = [
+    {
+      "key" = "example"
+      "operator" = "Equal"
+      "value" = "test"
+      "effect" = "NoSchedule"
+     }
+  ]
 }
 
 # expose karma directly
