@@ -59,7 +59,6 @@ module "controller" {
   harbor_mirror_host = contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_target_pve") && contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_stack_name") ? "harbor.${local.test_pve_conf["pve_test_deployments_domain"]}" : null
 }
 
-
 resource "kubernetes_namespace" "moto_mock" {
   metadata {
     name = "moto-mock"
@@ -139,7 +138,7 @@ resource "random_password" "harbor_pw" {
 resource "time_sleep" "wait_for_controller" {
   depends_on =  [ module.controller ]
 
-  create_duration = "1m"
+  create_duration = "3m"
 }
 
 resource "helm_release" "harbor" {
