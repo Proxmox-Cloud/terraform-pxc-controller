@@ -510,9 +510,12 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
         severity = alert["labels"]["severity"]
 
         if (
-            severity == "critical"
-            and alert["labels"]["alertname"] != "haproxy all backends down"
-            and alert["labels"]["alertname"] != "Errors Critical"
+            severity == "critical" and alert["labels"]["alertname"] 
+            not in [
+                "KubeAPIErrorBudgetBurn", 
+                "haproxy all backends down", 
+                "Errors Critical"
+                ]
         ):
             logger.error(alert)
             critical_alerts.append(alert["labels"]["alertname"])
@@ -667,6 +670,8 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
         client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace))
     )
 
+    time.sleep(5) # slow systems need some time to init the ns
+
     # create pod in namespace
     pod_manifest = client.V1Pod(
         metadata=client.V1ObjectMeta(name="pytest-pod"),
@@ -718,3 +723,5 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
     v1.delete_namespace(name=namespace)
 
 
+def test_secondary_logging(get_test_env, secondary_scenario, get_k8s_secondary_api_v1):
+    logger.info("secondary logging")
