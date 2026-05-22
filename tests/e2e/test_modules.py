@@ -697,7 +697,7 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
     first_container_image = pod_manifest.spec.containers[0].image
 
     assert first_container_image.startswith(
-        f"harbor.{get_test_env["pve_test_deployments_domain"]}"
+        f"harbor.{get_test_env['pve_test_deployments_domain']}"
     )
 
     logger.info((f"Pod is running image: {first_container_image}"))
@@ -717,5 +717,3 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
     v1.delete_namespace(name=namespace)
 
 
-def test_secondary_logging(get_test_env, secondary_scenario, get_k8s_secondary_api_v1):
-    logger.info("secondary logging")
