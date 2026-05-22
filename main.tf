@@ -204,6 +204,10 @@ resource "kubernetes_manifest" "adm_deployment" {
           app.kubernetes.io/name: pve-cloud-adm
       template:
         metadata:
+          # this will trigger a redeploy each time cert config or ext domain config changes
+          annotations:
+            'certs-checksum': ${sha256(jsonencode(local.cluster_cert_entries))}
+            'ext-domains-checksum': ${sha256(jsonencode(local.external_domains))}
           labels:
             app.kubernetes.io/name: pve-cloud-adm
             app.kubernetes.io/version: '${local.cloud_controller_version}'
