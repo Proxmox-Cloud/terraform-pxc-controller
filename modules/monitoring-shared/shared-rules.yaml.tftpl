@@ -83,12 +83,16 @@ additionalPrometheusRulesMap:
           
           - alert: "swap usage critical"
             for: "30s"
-            expr: '(node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes) / node_memory_SwapTotal_bytes > 0.8'
+            # swap alert is linked to ram usage. High swap is only a problem if ram is also high (metric free ram used here)
+            expr: |
+              ((node_memory_SwapTotal_bytes - node_memory_SwapFree_bytes) / node_memory_SwapTotal_bytes > 0.8)
+              and on(host)
+              (node_memory_MemAvailable_bytes{job="pve-node"} / node_memory_MemTotal_bytes < 0.20)
             labels:
               severity: "critical"
             annotations:
-              summary: "Swap usage for {{ $labels.host }} is critical."
-              description: "{{ $value }} percent of swap are in use for host {{ $labels.host }}."
+              summary: "Swap + ram usage for {{ $labels.host }} is critical."
+              description: "{{ $value }} percent of swap are in use for host {{ $labels.host }}, while also less than 20% of ram is available!"
 
           - alert: "cpu usage critical"
             expr: 'avg by(instance) (rate(node_cpu_seconds_total{job="pve-node", mode="idle"}[1m])) < 0.05'
