@@ -509,14 +509,11 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
     for alert in alerts:
         severity = alert["labels"]["severity"]
 
-        if (
-            severity == "critical" and alert["labels"]["alertname"] 
-            not in [
-                "KubeAPIErrorBudgetBurn", 
-                "haproxy all backends down", 
-                "Errors Critical"
-                ]
-        ):
+        if severity == "critical" and alert["labels"]["alertname"] not in [
+            "KubeAPIErrorBudgetBurn",
+            "haproxy all backends down",
+            "Errors Critical",
+        ]:
             logger.error(alert)
             critical_alerts.append(alert["labels"]["alertname"])
         elif severity == "warning":
@@ -670,7 +667,7 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
         client.V1Namespace(metadata=client.V1ObjectMeta(name=namespace))
     )
 
-    time.sleep(5) # slow systems need some time to init the ns
+    time.sleep(5)  # slow systems need some time to init the ns
 
     # create pod in namespace
     pod_manifest = client.V1Pod(
