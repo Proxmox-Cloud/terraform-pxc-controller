@@ -15,9 +15,8 @@ from kubernetes import client
 from kubernetes.client import V1Job, V1JobSpec, V1ObjectMeta
 from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
-from scenarios import *
 from pytest_httpserver import HTTPServer
-
+from scenarios import *
 
 logger = logging.getLogger(__name__)
 
@@ -357,15 +356,13 @@ def test_ingress_connectivity(get_test_env, get_k8s_api_v1, deployments_scenario
         get_test_env["cloud_inventory"]["bind_slave_ip"],
     ]
     answers = resolver.resolve(
-        f"{random_nginx_test_name}.{get_test_env['kubernetes']['deployments_domain']}", "A"
+        f"{random_nginx_test_name}.{get_test_env['kubernetes']['deployments_domain']}",
+        "A",
     )
     proxy_ip_resolved = answers[0].to_text()
     logger.info(proxy_ip_resolved)
 
-    assert (
-        proxy_ip_resolved
-        == get_test_env["pve_test_cluster_floating_internal"]
-    )
+    assert proxy_ip_resolved == get_test_env["pve_test_cluster_floating_internal"]
 
     context = ssl.create_default_context()
     context.check_hostname = False
@@ -735,18 +732,19 @@ def test_secondary_logging(get_test_env, secondary_scenario, get_k8s_secondary_a
     logger.info("secondary logging")
 
 
-
 def test_mc_gw_ingress_update(get_test_env, controller_scenario, set_pve_cloud_auth):
     logger.info("send test ingress update body to mc gw")
 
-    response = requests.post(f"https://pxc-mc-gw.{get_test_env['kubernetes']['deployments_domain']}/ingress-ddns-update", json={
-        "host": f"test-mc.{get_test_env['kubernetes']['deployments_domain']}",
-        "operation": "ADD",
-        "address": "127.0.0.1"
-    }, headers={
-        "Authorization": "Bearer DEMO-MC-TOKEN"
-    })
-    
+    response = requests.post(
+        f"https://pxc-mc-gw.{get_test_env['kubernetes']['deployments_domain']}/ingress-ddns-update",
+        json={
+            "host": f"test-mc.{get_test_env['kubernetes']['deployments_domain']}",
+            "operation": "ADD",
+            "address": "127.0.0.1",
+        },
+        headers={"Authorization": "Bearer DEMO-MC-TOKEN"},
+    )
+
     assert response.status_code == 200
 
     bind_internal_key = set_pve_cloud_auth["bind_internal_key"]
@@ -766,14 +764,16 @@ def test_mc_gw_ingress_update(get_test_env, controller_scenario, set_pve_cloud_a
     assert "test-mc" in [name.to_text() for name, _ in zone.nodes.items()]
 
     # delete
-    response = requests.post(f"https://pxc-mc-gw.{get_test_env['kubernetes']['deployments_domain']}/ingress-ddns-update", json={
-        "host": f"test-mc.{get_test_env['kubernetes']['deployments_domain']}",
-        "operation": "DELETE",
-        "address": "127.0.0.1"
-    }, headers={
-        "Authorization": "Bearer DEMO-MC-TOKEN"
-    })
-    
+    response = requests.post(
+        f"https://pxc-mc-gw.{get_test_env['kubernetes']['deployments_domain']}/ingress-ddns-update",
+        json={
+            "host": f"test-mc.{get_test_env['kubernetes']['deployments_domain']}",
+            "operation": "DELETE",
+            "address": "127.0.0.1",
+        },
+        headers={"Authorization": "Bearer DEMO-MC-TOKEN"},
+    )
+
     assert response.status_code == 200
 
     bind_internal_key = set_pve_cloud_auth["bind_internal_key"]
@@ -793,12 +793,12 @@ def test_mc_gw_ingress_update(get_test_env, controller_scenario, set_pve_cloud_a
     assert "test-mc" not in [name.to_text() for name, _ in zone.nodes.items()]
 
 
-
 def test_mc_gw_acme_update(get_test_env, controller_scenario, set_pve_cloud_auth):
     logger.info("mock test acme update flow")
 
-    response = requests.get(f"https://pxc-mc-gw.{get_test_env['kubernetes']['deployments_domain']}/get-acme-configs", headers={
-        "Authorization": "Bearer DEMO-MC-TOKEN"
-    })
-    
+    response = requests.get(
+        f"https://pxc-mc-gw.{get_test_env['kubernetes']['deployments_domain']}/get-acme-configs",
+        headers={"Authorization": "Bearer DEMO-MC-TOKEN"},
+    )
+
     assert response.status_code == 200
