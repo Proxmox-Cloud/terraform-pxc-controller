@@ -61,7 +61,7 @@ variable "route53_region" {
 variable "external_forwarded_ip" {
   type = string
   default = null
-  description = "The ip used in external dns while creating route53 records. Should point to the forwarded ip you use."
+  description = "The ip used in external dns while creating route53 records. Should point to the forwarded ip you use. In combination with multi cloud this will also be send to the update hook."
 }
 
 # this is optional and used for e2e testing with moto aws mock

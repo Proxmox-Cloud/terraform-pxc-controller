@@ -25,7 +25,7 @@ provider "helm" {
 # for reading worker ips for metrics exporter on pve
 provider "dns" {
   update {
-    server = local.test_pve_conf["pve_test_cloud_inv"]["bind_master_ip"]
+    server = local.test_pve_conf["cloud_inventory"]["bind_master_ip"]
   }
 }
 

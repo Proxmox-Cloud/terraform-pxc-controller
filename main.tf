@@ -36,8 +36,7 @@ locals {
 
   default_exclude_tls_namespaces = [
     "default", "kube-system", "kube-public", 
-    "kube-node-lease", "pve-cloud-controller", 
-    "nginx-ingress", "ceph-csi", "pve-cloud-backup"
+    "kube-node-lease", "nginx-ingress", "ceph-csi", "pve-cloud-backup"
   ]
 }
 
@@ -186,119 +185,231 @@ resource "kubernetes_config_map" "cluster_cert_entries" {
   }
 }
 
+# check if mc is configured
+data "pxc_cloud_secret" "mc_discovery" {
+  secret_name = "mc_discovery"
+}
 
-resource "kubernetes_manifest" "adm_deployment" {
-  manifest = yamldecode(<<-YAML
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
-      name: pve-cloud-adm
-      namespace: ${kubernetes_namespace.pve_cloud_controller.metadata[0].name}
-      labels:
-        app.kubernetes.io/name: pve-cloud-adm
-        app.kubernetes.io/version: '${local.cloud_controller_version}'
-    spec:
-      replicas: ${var.adm_controller_replicas}
-      selector:
-        matchLabels:
-          app.kubernetes.io/name: pve-cloud-adm
-      template:
-        metadata:
-          # this will trigger a redeploy each time cert config or ext domain config changes
-          annotations:
-            'certs-checksum': ${sha256(jsonencode(local.cluster_cert_entries))}
-            'ext-domains-checksum': ${sha256(jsonencode(local.external_domains))}
-          labels:
-            app.kubernetes.io/name: pve-cloud-adm
-            app.kubernetes.io/version: '${local.cloud_controller_version}'
-        spec:
-    %{ if var.node_selector != null }
-          nodeSelector:
-            ${indent(8, yamlencode(var.node_selector))}
-    %{ endif }
-    %{ if var.tolerations != null }
-          tolerations:
-            ${indent(8, yamlencode(var.tolerations))}
-    %{ endif }
-          priorityClassName: system-cluster-critical
-          volumes:
-            - name: pve-cloud-adm-tls
-              secret:
-                secretName: pve-cloud-adm-tls
-                items:
-                  - key: tls.crt
-                    path: tls.crt
-                  - key: tls.key
-                    path: tls.key
-            - name: cluster-conf
-              configMap:
-                name: cluster-conf
-          containers:
-            - name: adm
-              image: "${local.cloud_controller_image}:${local.cloud_controller_version}"
-              imagePullPolicy: IfNotPresent
-              volumeMounts:
-                - name: pve-cloud-adm-tls
-                  mountPath: "/etc/tls"  
-                  readOnly: true
-                - name: cluster-conf
-                  mountPath: "/etc/controller-conf"
-                  raedOnly: true
-              env:
-                - name: LOG_LEVEL
-                  value: '${var.log_level}'
-                - name: PG_CONN_STR
-                  value: '${local.pg_conn_str}'
-                - name: EXCLUDE_MIRROR_NAMESPACES
-                  value: '${join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))}'
-      %{ if var.harbor_mirror_host != null && local.harbor_mirror_auth != null }
-                - name: HARBOR_MIRROR_HOST
-                  value: '${var.harbor_mirror_host}'
-                - name: HARBOR_MIRROR_PULL_SECRET_NAME
-                  value: 'mirror-pull-secret'
-                # skopeo check
-                - name: HARBOR_MIRROR_USER
-                  value: '${local.harbor_mirror_auth.full_name}'
-                - name: HARBOR_MIRROR_PASSWORD
-                  value:  '${local.harbor_mirror_auth.secret}'
-      %{ endif }
-                - name: BIND_MASTER_IP
-                  value: '${local.cluster_vars.bind_master_ip}'
-                - name: BIND_DNS_UPDATE_KEY
-                  value: '${local.bind_dns_update_key}'
-                - name: INTERNAL_PROXY_FIP
-                  value: '${local.cluster_vars.pve_haproxy_floating_ip_internal}' 
-      %{ if var.route53_access_key_id != null && var.route53_secret_access_key != null && var.external_forwarded_ip != null }
-                - name: ROUTE53_REGION
-                  value: '${var.route53_region}'
-                - name: ROUTE53_ACCESS_KEY_ID
-                  value: '${var.route53_access_key_id}'
-                - name: ROUTE53_SECRET_ACCESS_KEY
-                  value: '${var.route53_secret_access_key}'
-                - name: EXTERNAL_FORWARDED_IP
-                  value: '${var.external_forwarded_ip}'     
-      %{ endif}
-      %{ if var.route53_endpoint_url != null }
-                - name: ROUTE53_ENDPOINT_URL
-                  value: '${var.route53_endpoint_url}'
-      %{ endif}
-              command: ["gunicorn"]
-              args:
-                - "-w"
-                - "4"
-                - "--threads"
-                - "4"
-                - "-b"
-                - "0.0.0.0:443"
-                - "--certfile=/etc/tls/tls.crt"
-                - "--keyfile=/etc/tls/tls.key"
-                - "pve_cloud_ctrl.adm:app"
-              ports:
-                - name: https
-                  containerPort: 443
-                  protocol: TCP
-  YAML
-  )
+locals {
+  mc_parsed = data.pxc_cloud_secret.mc_discovery.secret_data != "" ? jsondecode(data.pxc_cloud_secret.mc_discovery.secret_data) : null
+}
+
+resource "kubernetes_deployment_v1" "adm_deployment" {
+  metadata {
+    name      = "pve-cloud-adm"
+    namespace = kubernetes_namespace.pve_cloud_controller.metadata[0].name
+    labels = {
+      "app.kubernetes.io/name"    = "pve-cloud-adm"
+      "app.kubernetes.io/version" = local.cloud_controller_version
+    }
+  }
+
+  spec {
+    replicas = var.adm_controller_replicas
+
+    selector {
+      match_labels = {
+        "app.kubernetes.io/name" = "pve-cloud-adm"
+      }
+    }
+
+    template {
+      metadata {
+        annotations = {
+          "certs-checksum"       = sha256(jsonencode(local.cluster_cert_entries))
+          "ext-domains-checksum" = sha256(jsonencode(local.external_domains))
+        }
+        labels = {
+          "app.kubernetes.io/name"    = "pve-cloud-adm"
+          "app.kubernetes.io/version" = local.cloud_controller_version
+        }
+      }
+
+      spec {
+        priority_class_name = "system-cluster-critical"
+        node_selector       = var.node_selector
+
+        dynamic "toleration" {
+          for_each = var.tolerations != null ? var.tolerations : []
+          content {
+            key                = lookup(toleration.value, "key", null)
+            operator           = lookup(toleration.value, "operator", null)
+            value              = lookup(toleration.value, "value", null)
+            effect             = lookup(toleration.value, "effect", null)
+          }
+        }
+
+        volume {
+          name = "pve-cloud-adm-tls"
+          secret {
+            secret_name = "pve-cloud-adm-tls"
+            items {
+              key  = "tls.crt"
+              path = "tls.crt"
+            }
+            items {
+              key  = "tls.key"
+              path = "tls.key"
+            }
+          }
+        }
+
+        volume {
+          name = "cluster-conf"
+          config_map {
+            name = "cluster-conf"
+          }
+        }
+
+        container {
+          name              = "adm"
+          image             = "${local.cloud_controller_image}:${local.cloud_controller_version}"
+          image_pull_policy = "IfNotPresent"
+          command           = ["gunicorn"]
+          args = [
+            "-w", "4",
+            "--threads", "4",
+            "-b", "0.0.0.0:443",
+            "--certfile=/etc/tls/tls.crt",
+            "--keyfile=/etc/tls/tls.key",
+            "pve_cloud_ctrl.adm:app"
+          ]
+
+          volume_mount {
+            name       = "pve-cloud-adm-tls"
+            mount_path = "/etc/tls"
+            read_only  = true
+          }
+
+          volume_mount {
+            name       = "cluster-conf"
+            mount_path = "/etc/controller-conf"
+            read_only  = true
+          }
+
+          port {
+            name           = "https"
+            container_port = 443
+            protocol       = "TCP"
+          }
+
+          # static env vars
+          env {
+            name  = "LOG_LEVEL"
+            value = var.log_level
+          }
+          env {
+            name  = "PG_CONN_STR"
+            value = local.pg_conn_str
+          }
+          env {
+            name  = "EXCLUDE_MIRROR_NAMESPACES"
+            value = join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))
+          }
+          env {
+            name  = "BIND_MASTER_IP"
+            value = local.cluster_vars.bind_master_ip
+          }
+          env {
+            name  = "BIND_DNS_UPDATE_KEY"
+            value = local.bind_dns_update_key
+          }
+          env {
+            name  = "INTERNAL_PROXY_FIP"
+            value = local.cluster_vars.pve_haproxy_floating_ip_internal
+          }
+
+          # harbor mirror vars
+          dynamic "env" {
+            for_each = var.harbor_mirror_host != null && local.harbor_mirror_auth != null ? [1] : []
+            content {
+              name  = "HARBOR_MIRROR_HOST"
+              value = var.harbor_mirror_host
+            }
+          }
+
+          dynamic "env" {
+            for_each = var.harbor_mirror_host != null && local.harbor_mirror_auth != null ? [1] : []
+            content {
+              name  = "HARBOR_MIRROR_PULL_SECRET_NAME"
+              value = "mirror-pull-secret"
+            }
+          }
+          dynamic "env" {
+            for_each = var.harbor_mirror_host != null && local.harbor_mirror_auth != null ? [1] : []
+            content {
+              name  = "HARBOR_MIRROR_USER"
+              value = local.harbor_mirror_auth.full_name
+            }
+          }
+          dynamic "env" {
+            for_each = var.harbor_mirror_host != null && local.harbor_mirror_auth != null ? [1] : []
+            content {
+              name  = "HARBOR_MIRROR_PASSWORD"
+              value = local.harbor_mirror_auth.secret
+            }
+          }
+
+          # route53
+          dynamic "env" {
+            for_each = var.route53_access_key_id != null && var.route53_secret_access_key != null && var.external_forwarded_ip != null ? [1] : []
+            content {
+              name  = "ROUTE53_REGION"
+              value = var.route53_region
+            }
+          }
+          dynamic "env" {
+            for_each = var.route53_access_key_id != null && var.route53_secret_access_key != null && var.external_forwarded_ip != null ? [1] : []
+            content {
+              name  = "ROUTE53_ACCESS_KEY_ID"
+              value = var.route53_access_key_id
+            }
+          }
+          dynamic "env" {
+            for_each = var.route53_access_key_id != null && var.route53_secret_access_key != null && var.external_forwarded_ip != null ? [1] : []
+            content {
+              name  = "ROUTE53_SECRET_ACCESS_KEY"
+              value = var.route53_secret_access_key
+            }
+          }
+
+          # external forwarded ip
+          dynamic "env" {
+            for_each = var.external_forwarded_ip != null ? [1] : []
+            content {
+              name  = "EXTERNAL_FORWARDED_IP"
+              value = var.external_forwarded_ip
+            }
+          }
+
+          # custom route53 endpoint (for e2e tests)
+          dynamic "env" {
+            for_each = var.route53_endpoint_url != null ? [1] : []
+            content {
+              name  = "ROUTE53_ENDPOINT_URL"
+              value = var.route53_endpoint_url
+            }
+          }
+
+          # mc config
+          dynamic "env" {
+            for_each = local.mc_parsed != null && length(local.mc_parsed.peers) > 0 && var.external_forwarded_ip != null ? [1] : []
+            content {
+              name  = "MC_TOKEN"
+              value = local.mc_parsed.token
+            }
+          }
+          dynamic "env" {
+            for_each = local.mc_parsed != null && length(local.mc_parsed.peers) > 0 && var.external_forwarded_ip != null ? [1] : []
+            content {
+              name  = "MC_PEER_ENDPOINTS"
+              value = join(",", local.mc_parsed.peers)
+            }
+          }
+        }
+      }
+    }
+  }
 }
 
 resource "kubernetes_manifest" "adm_service" {
@@ -484,11 +595,11 @@ resource "kubernetes_manifest" "cron" {
                       value: '${var.route53_secret_access_key}'
                     - name: EXTERNAL_FORWARDED_IP
                       value: '${var.external_forwarded_ip}'     
-      %{ endif}
+      %{ endif }
       %{ if var.route53_endpoint_url != null }
                     - name: ROUTE53_ENDPOINT_URL
                       value: '${var.route53_endpoint_url}'
-      %{ endif}
+      %{ endif }
                     - name: EXCLUDE_MIRROR_NAMESPACES
                       value: '${join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))}'
                     - name: EXCLUDE_TLS_NAMESPACES
@@ -499,3 +610,93 @@ resource "kubernetes_manifest" "cron" {
   )
 }
 
+# currently only needed to create cluster-tls in cloud controller ns initially
+resource "kubernetes_manifest" "init_job" {
+  # todo: this might not be optimal
+  lifecycle {
+    ignore_changes = [ manifest ]
+  }
+
+  manifest = yamldecode(<<-YAML
+    apiVersion: batch/v1
+    kind: Job
+    metadata:
+      name: pve-cloud-init
+      namespace: ${kubernetes_namespace.pve_cloud_controller.metadata[0].name}
+      labels:
+        app.kubernetes.io/name: pve-cloud-init
+        app.kubernetes.io/version: '${local.cloud_controller_version}'
+    spec:
+      backoffLimit: 0
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: pve-cloud-init
+            app.kubernetes.io/version: '${local.cloud_controller_version}'
+        spec:
+    %{ if var.node_selector != null }
+          nodeSelector:
+            ${indent(8, yamlencode(var.node_selector))}
+    %{ endif }
+    %{ if var.tolerations != null }
+          tolerations:
+            ${indent(8, yamlencode(var.tolerations))}
+    %{ endif }
+          restartPolicy: Never
+          volumes:
+            - name: cluster-conf
+              configMap:
+                name: cluster-conf
+          containers:
+            - name: init
+              image: "${local.cloud_controller_image}:${local.cloud_controller_version}"
+              imagePullPolicy: IfNotPresent
+              volumeMounts:
+                - name: cluster-conf
+                  mountPath: "/etc/controller-conf"
+                  raedOnly: true
+              env:
+                - name: STACK_FQDN
+                  value: '${local.k8s_stack_fqdn}'
+                - name: PG_CONN_STR
+                  value: '${local.pg_conn_str}'
+      %{ if var.harbor_mirror_host != null && local.harbor_mirror_auth != null }
+                - name: HARBOR_MIRROR_HOST
+                  value: '${var.harbor_mirror_host}'
+                - name: HARBOR_MIRROR_PULL_SECRET_NAME
+                  value: 'mirror-pull-secret'
+      %{ endif }
+                - name: BIND_MASTER_IP
+                  value: '${local.cluster_vars.bind_master_ip}'
+                - name: BIND_DNS_UPDATE_KEY
+                  value: '${local.bind_dns_update_key}'
+                - name: INTERNAL_PROXY_FIP
+                  value: '${local.cluster_vars.pve_haproxy_floating_ip_internal}' 
+      %{ if var.route53_access_key_id != null && var.route53_secret_access_key != null && var.external_forwarded_ip != null }
+                - name: ROUTE53_REGION
+                  value: '${var.route53_region}'
+                - name: ROUTE53_ACCESS_KEY_ID
+                  value: '${var.route53_access_key_id}'
+                - name: ROUTE53_SECRET_ACCESS_KEY
+                  value: '${var.route53_secret_access_key}'
+                - name: EXTERNAL_FORWARDED_IP
+                  value: '${var.external_forwarded_ip}'     
+      %{ endif }
+      %{ if var.route53_endpoint_url != null }
+                - name: ROUTE53_ENDPOINT_URL
+                  value: '${var.route53_endpoint_url}'
+      %{ endif }
+                - name: EXCLUDE_MIRROR_NAMESPACES
+                  value: '${join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))}'
+                - name: EXCLUDE_TLS_NAMESPACES
+                  value: '${join(",", concat(local.default_exclude_tls_namespaces, var.exclude_tls_namespaces))}'
+              command: [ "cron" ]
+
+  YAML
+  )
+
+  # fix provider error
+  # todo: this is also a hack
+  computed_fields = ["spec.template.metadata.labels"]
+  
+}

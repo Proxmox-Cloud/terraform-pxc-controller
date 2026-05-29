@@ -16,6 +16,8 @@ from kubernetes.client import V1Job, V1JobSpec, V1ObjectMeta
 from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
 from scenarios import *
+from pytest_httpserver import HTTPServer
+
 
 logger = logging.getLogger(__name__)
 
@@ -172,7 +174,7 @@ def test_delete_ingress(
             ingress_class_name="nginx",
             rules=[
                 client.V1IngressRule(
-                    host=f"test-dns-delete.{get_test_env['pve_test_deployments_domain']}",
+                    host=f"test-dns-delete.{get_test_env['kubernetes']['deployments_domain']}",
                     http=client.V1HTTPIngressRuleValue(
                         paths=[
                             client.V1HTTPIngressPath(
@@ -202,8 +204,8 @@ def test_delete_ingress(
     # assert deleted from bind
     zone = dns.zone.from_xfr(
         dns.query.xfr(
-            get_test_env["pve_test_cloud_inv"]["bind_master_ip"],
-            get_test_env["pve_test_deployments_domain"],
+            get_test_env["cloud_inventory"]["bind_master_ip"],
+            get_test_env["kubernetes"]["deployments_domain"],
             keyring=dns.tsigkeyring.from_text({"internal.": bind_internal_key}),
             keyname="internal.",
             keyalgorithm="hmac-sha256",
@@ -224,7 +226,7 @@ def test_delete_ingress(
 
     test_deployment_zone = None
     for zone in existing_zones:
-        if zone["Name"] == get_test_env["pve_test_deployments_domain"] + ".":
+        if zone["Name"] == get_test_env["kubernetes"]["deployments_domain"] + ".":
             test_deployment_zone = zone
             break
 
@@ -257,6 +259,12 @@ def test_update_ingress(
 ):
     kubeconfig = get_primary_kubeconfig
 
+    # initialize pytest http server to test mc
+    server = HTTPServer(host="0.0.0.0", port=8888)
+    server.start()
+
+    server.expect_request("/ingress-ddns-update", method="POST").respond_with_data("ok")
+
     # auth kubernetes api
     with tempfile.NamedTemporaryFile(mode="w", delete=False) as temp_file:
         temp_file.write(kubeconfig)
@@ -275,7 +283,7 @@ def test_update_ingress(
             ingress_class_name="nginx",
             rules=[
                 client.V1IngressRule(
-                    host=f"test-dns-update-initial.{get_test_env['pve_test_deployments_domain']}",
+                    host=f"test-dns-update-initial.{get_test_env['kubernetes']['deployments_domain']}",
                     http=client.V1HTTPIngressRuleValue(
                         paths=[
                             client.V1HTTPIngressPath(
@@ -299,7 +307,7 @@ def test_update_ingress(
 
     created.spec.rules = [
         client.V1IngressRule(
-            host=f"test-dns-update-updated.{get_test_env['pve_test_deployments_domain']}",
+            host=f"test-dns-update-updated.{get_test_env['kubernetes']['deployments_domain']}",
             http=created.spec.rules[0].http,  # keep existing paths
         )
     ]
@@ -314,8 +322,8 @@ def test_update_ingress(
     # assert deleted from bind
     zone = dns.zone.from_xfr(
         dns.query.xfr(
-            get_test_env["pve_test_cloud_inv"]["bind_master_ip"],
-            get_test_env["pve_test_deployments_domain"],
+            get_test_env["cloud_inventory"]["bind_master_ip"],
+            get_test_env["kubernetes"]["deployments_domain"],
             keyring=dns.tsigkeyring.from_text({"internal.": bind_internal_key}),
             keyname="internal.",
             keyalgorithm="hmac-sha256",
@@ -326,10 +334,15 @@ def test_update_ingress(
     logger.info(bind_records)
 
     assert "test-dns-update-updated" in bind_records
-
     assert "test-dns-update-initial" not in bind_records
 
     api.delete_namespaced_ingress(name="test-update-ingress", namespace="default")
+
+    # todo: could drill down and validate content and frequency of requests
+    logger.info(server.log)
+
+    server.check_assertions()
+    server.stop()
 
 
 def test_ingress_connectivity(get_test_env, get_k8s_api_v1, deployments_scenario):
@@ -340,20 +353,18 @@ def test_ingress_connectivity(get_test_env, get_k8s_api_v1, deployments_scenario
     # validate custom nginx with self signed cert
     resolver = dns.resolver.Resolver()
     resolver.nameservers = [
-        get_test_env["pve_test_cloud_inv"]["bind_master_ip"],
-        get_test_env["pve_test_cloud_inv"]["bind_slave_ip"],
+        get_test_env["cloud_inventory"]["bind_master_ip"],
+        get_test_env["cloud_inventory"]["bind_slave_ip"],
     ]
     answers = resolver.resolve(
-        f"{random_nginx_test_name}.{get_test_env['pve_test_deployments_domain']}", "A"
+        f"{random_nginx_test_name}.{get_test_env['kubernetes']['deployments_domain']}", "A"
     )
     proxy_ip_resolved = answers[0].to_text()
     logger.info(proxy_ip_resolved)
 
     assert (
         proxy_ip_resolved
-        == get_test_env["pve_test_cloud_inv_cluster"][
-            "pve_haproxy_floating_ip_internal"
-        ]
+        == get_test_env["pve_test_cluster_floating_internal"]
     )
 
     context = ssl.create_default_context()
@@ -363,7 +374,7 @@ def test_ingress_connectivity(get_test_env, get_k8s_api_v1, deployments_scenario
     conn = socket.create_connection((proxy_ip_resolved, 443), timeout=5)
     ssl_sock = context.wrap_socket(
         conn,
-        server_hostname=f"{random_nginx_test_name}.{get_test_env['pve_test_deployments_domain']}",
+        server_hostname=f"{random_nginx_test_name}.{get_test_env['kubernetes']['deployments_domain']}",
     )
     cert = ssl_sock.getpeercert(binary_form=True)
     x509_cert = x509.load_der_x509_certificate(cert, default_backend())
@@ -378,7 +389,7 @@ def test_ingress_connectivity(get_test_env, get_k8s_api_v1, deployments_scenario
 
 def test_proxy_proto_403(get_test_env, deployments_scenario):
     logger.info("validate 403 from proxy proto")
-    url = f"https://nginx-test-prxy-proto.{get_test_env['pve_test_deployments_domain']}"
+    url = f"https://nginx-test-prxy-proto.{get_test_env['kubernetes']['deployments_domain']}"
 
     response = requests.get(url, verify=False)
 
@@ -445,7 +456,7 @@ def test_ingress_cluster_cert_block(
             ingress_class_name="nginx",
             rules=[
                 client.V1IngressRule(
-                    host=f"test.{get_test_env['pve_test_deployments_domain']}",
+                    host=f"test.{get_test_env['kubernetes']['deployments_domain']}",
                     http=client.V1HTTPIngressRuleValue(
                         paths=[
                             client.V1HTTPIngressPath(
@@ -481,8 +492,8 @@ def test_ingress_dns(get_test_env, set_pve_cloud_auth, deployments_scenario):
     # test ingress dns admission controller, if records were made for test-nginx helm deployment
     zone = dns.zone.from_xfr(
         dns.query.xfr(
-            get_test_env["pve_test_cloud_inv"]["bind_master_ip"],
-            get_test_env["pve_test_deployments_domain"],
+            get_test_env["cloud_inventory"]["bind_master_ip"],
+            get_test_env["kubernetes"]["deployments_domain"],
             keyring=dns.tsigkeyring.from_text({"internal.": bind_internal_key}),
             keyname="internal.",
             keyalgorithm="hmac-sha256",
@@ -496,7 +507,7 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
     logger.info("test prometheus alert manager rules firing")
 
     response = requests.get(
-        f"http://alertmgr.{get_test_env['pve_test_deployments_domain']}/api/v2/alerts",
+        f"http://alertmgr.{get_test_env['kubernetes']['deployments_domain']}/api/v2/alerts",
         timeout=5,
     )
     response.raise_for_status()
@@ -541,7 +552,7 @@ def test_external_ingress_dns(
 
     test_deployment_zone = None
     for zone in existing_zones:
-        if zone["Name"] == get_test_env["pve_test_deployments_domain"] + ".":
+        if zone["Name"] == get_test_env["kubernetes"]["deployments_domain"] + ".":
             test_deployment_zone = zone
             break
 
@@ -588,8 +599,8 @@ def test_delete_namespace_ingress_hook(
 
     zone = dns.zone.from_xfr(
         dns.query.xfr(
-            get_test_env["pve_test_cloud_inv"]["bind_master_ip"],
-            get_test_env["pve_test_deployments_domain"],
+            get_test_env["cloud_inventory"]["bind_master_ip"],
+            get_test_env["kubernetes"]["deployments_domain"],
             keyring=dns.tsigkeyring.from_text({"internal.": bind_internal_key}),
             keyname="internal.",
             keyalgorithm="hmac-sha256",
@@ -627,8 +638,8 @@ def test_delete_namespace_ingress_hook(
     # then we assert it was deleted
     zone = dns.zone.from_xfr(
         dns.query.xfr(
-            get_test_env["pve_test_cloud_inv"]["bind_master_ip"],
-            get_test_env["pve_test_deployments_domain"],
+            get_test_env["cloud_inventory"]["bind_master_ip"],
+            get_test_env["kubernetes"]["deployments_domain"],
             keyring=dns.tsigkeyring.from_text({"internal.": bind_internal_key}),
             keyname="internal.",
             keyalgorithm="hmac-sha256",
@@ -700,7 +711,7 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
     first_container_image = pod_manifest.spec.containers[0].image
 
     assert first_container_image.startswith(
-        f"harbor.{get_test_env['pve_test_deployments_domain']}"
+        f"harbor.{get_test_env['kubernetes']['deployments_domain']}"
     )
 
     logger.info((f"Pod is running image: {first_container_image}"))
@@ -722,3 +733,72 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
 
 def test_secondary_logging(get_test_env, secondary_scenario, get_k8s_secondary_api_v1):
     logger.info("secondary logging")
+
+
+
+def test_mc_gw_ingress_update(get_test_env, controller_scenario, set_pve_cloud_auth):
+    logger.info("send test ingress update body to mc gw")
+
+    response = requests.post(f"https://pxc-mc-gw.{get_test_env['kubernetes']['deployments_domain']}/ingress-ddns-update", json={
+        "host": f"test-mc.{get_test_env['kubernetes']['deployments_domain']}",
+        "operation": "ADD",
+        "address": "127.0.0.1"
+    }, headers={
+        "Authorization": "Bearer DEMO-MC-TOKEN"
+    })
+    
+    assert response.status_code == 200
+
+    bind_internal_key = set_pve_cloud_auth["bind_internal_key"]
+
+    # check if the dns records were made through the mc endpoint
+    zone = dns.zone.from_xfr(
+        dns.query.xfr(
+            get_test_env["cloud_inventory"]["bind_master_ip"],
+            get_test_env["kubernetes"]["deployments_domain"],
+            keyring=dns.tsigkeyring.from_text({"internal.": bind_internal_key}),
+            keyname="internal.",
+            keyalgorithm="hmac-sha256",
+        )
+    )
+
+    logger.info([name.to_text() for name, _ in zone.nodes.items()])
+    assert "test-mc" in [name.to_text() for name, _ in zone.nodes.items()]
+
+    # delete
+    response = requests.post(f"https://pxc-mc-gw.{get_test_env['kubernetes']['deployments_domain']}/ingress-ddns-update", json={
+        "host": f"test-mc.{get_test_env['kubernetes']['deployments_domain']}",
+        "operation": "DELETE",
+        "address": "127.0.0.1"
+    }, headers={
+        "Authorization": "Bearer DEMO-MC-TOKEN"
+    })
+    
+    assert response.status_code == 200
+
+    bind_internal_key = set_pve_cloud_auth["bind_internal_key"]
+
+    # check if the dns records were made through the mc gw endpoint
+    zone = dns.zone.from_xfr(
+        dns.query.xfr(
+            get_test_env["cloud_inventory"]["bind_master_ip"],
+            get_test_env["kubernetes"]["deployments_domain"],
+            keyring=dns.tsigkeyring.from_text({"internal.": bind_internal_key}),
+            keyname="internal.",
+            keyalgorithm="hmac-sha256",
+        )
+    )
+
+    logger.info([name.to_text() for name, _ in zone.nodes.items()])
+    assert "test-mc" not in [name.to_text() for name, _ in zone.nodes.items()]
+
+
+
+def test_mc_gw_acme_update(get_test_env, controller_scenario, set_pve_cloud_auth):
+    logger.info("mock test acme update flow")
+
+    response = requests.get(f"https://pxc-mc-gw.{get_test_env['kubernetes']['deployments_domain']}/get-acme-configs", headers={
+        "Authorization": "Bearer DEMO-MC-TOKEN"
+    })
+    
+    assert response.status_code == 200

@@ -21,6 +21,10 @@ variable "e2e_kubespray_inv" {
   type = string
 }
 
+variable "dev_machine_ipv4" {
+  type = string
+}
+
 provider "pxc" {
   inventory = var.e2e_kubespray_inv
 }
@@ -55,8 +59,34 @@ module "controller" {
      }
   ]
 
-  # set harbor host if tls is available, needs valid certificate to perform testing
-  harbor_mirror_host = contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_target_pve") && contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_stack_name") ? "harbor.${local.test_pve_conf["pve_test_deployments_domain"]}" : null
+  harbor_mirror_host = "harbor.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
+}
+
+module "multi_cloud_gateway" {
+  depends_on = [ module.controller ]
+  source = "../../../modules/multi-cloud-gw"
+
+  cloud_controller_image = var.cloud_controller_image
+  cloud_controller_version = var.cloud_controller_version
+  
+  mc_gw_replicas = 1 # for easier log reading
+
+  multi_cloud_token = "DEMO-MC-TOKEN"
+  multi_cloud_gateway_host = "pxc-mc-gw.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
+  multi_cloud_peers = [ "http://${var.dev_machine_ipv4}:8888" ] # todo: insert mock endpoint
+
+  node_selector = {
+    "kubernetes.io/os" = "linux"
+  }
+
+  tolerations = [
+    {
+      "key" = "example"
+      "operator" = "Equal"
+      "value" = "test"
+      "effect" = "NoSchedule"
+     }
+  ]
 }
 
 resource "kubernetes_namespace" "moto_mock" {
@@ -143,7 +173,6 @@ resource "time_sleep" "wait_for_controller" {
 
 resource "helm_release" "harbor" {
   depends_on = [ time_sleep.wait_for_controller ]
-  count = contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_target_pve") && contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_stack_name") ? 1 : 0
   repository = "https://helm.goharbor.io"
   chart = "harbor"
   version = "1.18.1"
@@ -160,8 +189,8 @@ resource "helm_release" "harbor" {
         ingress:
           className: nginx
           hosts:
-            core: harbor.${local.test_pve_conf["pve_test_deployments_domain"]}
-            notary: notary.${local.test_pve_conf["pve_test_deployments_domain"]}
+            core: harbor.${local.test_pve_conf["kubernetes"]["deployments_domain"]}
+            notary: notary.${local.test_pve_conf["kubernetes"]["deployments_domain"]}
         tls:
           secret:
             notarySecretName: cluster-tls
@@ -171,10 +200,12 @@ resource "helm_release" "harbor" {
         persistentVolumeClaim:
           registry:
             size: 250Gi
-      externalURL: https://harbor.${local.test_pve_conf["pve_test_deployments_domain"]}
+      externalURL: https://harbor.${local.test_pve_conf["kubernetes"]["deployments_domain"]}
       harborAdminPassword: ${random_password.harbor_pw.result}
     YML
   ]
 
   timeout = 1200
 }
+
+

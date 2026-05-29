@@ -43,10 +43,10 @@ def init_moto(proxmox, get_test_env):
     assert worker
 
     resolver = dns.resolver.Resolver()
-    resolver.nameservers = [get_test_env["pve_test_cloud_inv"]["bind_master_ip"]]
+    resolver.nameservers = [get_test_env["cloud_inventory"]["bind_master_ip"]]
 
     ddns_answer = resolver.resolve(
-        f"{worker['name']}.{get_test_env['pve_test_cloud_domain']}"
+        f"{worker['name']}.{get_test_env['cloud_inventory']['pve_cloud_domain']}"
     )
     ddns_ips = [rdata.to_text() for rdata in ddns_answer]
 
@@ -67,13 +67,13 @@ def init_moto(proxmox, get_test_env):
 
     test_deployment_zone_exists = False
     for zone in existing_zones:
-        if zone["Name"] == get_test_env["pve_test_deployments_domain"] + ".":
+        if zone["Name"] == get_test_env["kubernetes"]["deployments_domain"] + ".":
             test_deployment_zone_exists = True
             break
 
     if not test_deployment_zone_exists:
         create_resp = client.create_hosted_zone(
-            Name=get_test_env["pve_test_deployments_domain"] + ".",
+            Name=get_test_env["kubernetes"]["deployments_domain"] + ".",
             CallerReference="pve-test-deployments-domain",
         )
 
@@ -108,10 +108,10 @@ def get_moto_client(get_test_env, get_proxmoxer, controller_scenario):
     assert worker
 
     resolver = dns.resolver.Resolver()
-    resolver.nameservers = [get_test_env["pve_test_cloud_inv"]["bind_master_ip"]]
+    resolver.nameservers = [get_test_env["cloud_inventory"]["bind_master_ip"]]
 
     ddns_answer = resolver.resolve(
-        f"{worker['name']}.{get_test_env['pve_test_cloud_domain']}"
+        f"{worker['name']}.{get_test_env['cloud_inventory']['pve_cloud_domain']}"
     )
     ddns_ips = [rdata.to_text() for rdata in ddns_answer]
 

@@ -37,7 +37,7 @@ module "controller" {
   log_level = "DEBUG"
 
   # set harbor host if tls is available, needs valid certificate to perform testing
-  harbor_mirror_host = contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_target_pve") && contains(keys(local.test_pve_conf), "pve_test_k8s_tls_copy_stack_name") ? "harbor.${local.test_pve_conf["pve_test_deployments_domain"]}" : null
+  harbor_mirror_host = "harbor.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
 }
 
 resource "helm_release" "openebs" {
@@ -72,12 +72,13 @@ module "tf_monitoring" {
   depends_on = [ helm_release.openebs ]
   source = "../../../modules/monitoring-client-module"
 
-  alertmanager_host = "alrtmgr-secondary.${local.test_pve_conf["pve_test_deployments_domain"]}"
-  victorialogs_host = "vlogs-secondary.${local.test_pve_conf["pve_test_deployments_domain"]}"
+  alertmanager_host = "alrtmgr-secondary.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
+  victorialogs_host = "vlogs-secondary.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
 
   enable_temperature_rules = true
 
-  thermal_temperature_warn = lookup(local.test_pve_conf["pve_test_tf_parameters"], "thermal_temperature_warn", 50)
+  thermal_temperature_warn = lookup(local.test_pve_conf["terraform_parameters"], "thermal_temperature_warn", 50)
+  cpu_temperature_warn = lookup(local.test_pve_conf["terraform_parameters"], "cpu_temperature_warn", 60)
 
   # for testing
   insecure_tls = true

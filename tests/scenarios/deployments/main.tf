@@ -34,7 +34,7 @@ resource "helm_release" "nginx_test" {
         type: ClusterIP
       ingress:
         enabled: true
-        hostname: ${var.nginx_rnd_hostname}.${local.test_pve_conf["pve_test_deployments_domain"]}
+        hostname: ${var.nginx_rnd_hostname}.${local.test_pve_conf["kubernetes"]["deployments_domain"]}
         tls: true
         selfSigned: true
         ingressClassName: nginx
@@ -57,7 +57,7 @@ resource "helm_release" "nginx_external_test" {
         type: ClusterIP
       ingress:
         enabled: true
-        hostname: external-example.${local.test_pve_conf["pve_test_deployments_domain"]}
+        hostname: external-example.${local.test_pve_conf["kubernetes"]["deployments_domain"]}
         tls: true
         selfSigned: true
         ingressClassName: nginx
@@ -80,7 +80,7 @@ resource "helm_release" "nginx_ns_delete_test" {
         type: ClusterIP
       ingress:
         enabled: true
-        hostname: nginx-ns-delete-test.${local.test_pve_conf["pve_test_deployments_domain"]}
+        hostname: nginx-ns-delete-test.${local.test_pve_conf["kubernetes"]["deployments_domain"]}
         tls: true
         selfSigned: true
         ingressClassName: nginx
@@ -91,11 +91,12 @@ resource "helm_release" "nginx_ns_delete_test" {
 
 module "tf_monitoring" {
   source = "../../../modules/monitoring-master-stack"
-  ingress_apex = local.test_pve_conf["pve_test_deployments_domain"]
+  ingress_apex = local.test_pve_conf["kubernetes"]["deployments_domain"]
 
   enable_temperature_rules = true
 
-  thermal_temperature_warn = lookup(local.test_pve_conf["pve_test_tf_parameters"], "thermal_temperature_warn", 50)
+  thermal_temperature_warn = lookup(local.test_pve_conf["terraform_parameters"], "thermal_temperature_warn", 50)
+  cpu_temperature_warn = lookup(local.test_pve_conf["terraform_parameters"], "cpu_temperature_warn", 60)
 
   # for testing
   insecure_tls = true
@@ -127,7 +128,7 @@ resource "kubernetes_manifest" "karma_ingress" {
     spec:
       ingressClassName: nginx
       rules:
-        - host: karma.${local.test_pve_conf["pve_test_deployments_domain"]}
+        - host: karma.${local.test_pve_conf["kubernetes"]["deployments_domain"]}
           http:
             paths:
               - path: /
@@ -161,7 +162,7 @@ resource "helm_release" "nginx_test_proto" {
         enabled: true
         annotations:
           nginx.ingress.kubernetes.io/whitelist-source-range: '127.0.0.1/32'
-        hostname: nginx-test-prxy-proto.${local.test_pve_conf["pve_test_deployments_domain"]}
+        hostname: nginx-test-prxy-proto.${local.test_pve_conf["kubernetes"]["deployments_domain"]}
         tls: true
         selfSigned: true
         ingressClassName: nginx
