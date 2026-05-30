@@ -25,6 +25,6 @@ output "multi_cloud_token" {
 
 To give the token to other clusters, use the terraform `pxc_cloud_secret` and `pxc_cloud_age_secret` resources.
 
-This module should get a depends on for the normal controller module deployed into the cluster.
+This module should get a `depends_on = [ module.controller ]`, as it needs the namespace of the main module.
 
 For the discovery to pick up you need to run `terraform apply` twice.

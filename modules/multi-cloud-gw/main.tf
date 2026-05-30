@@ -130,6 +130,10 @@ resource "kubernetes_deployment_v1" "mc_gw_deployment" {
             name  = "MC_TOKEN"
             value = var.multi_cloud_token
           }
+          env {
+            name = "PVE_CLOUD_DOMAIN"
+            value = local.cluster_vars.pve_cloud_domain
+          }
           # Note: MC_PEER_ENDPOINTS intentionally omitted per original manifest comments
         }
       }
