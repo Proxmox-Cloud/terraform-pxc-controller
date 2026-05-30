@@ -89,21 +89,26 @@ def get_mc_gw_http_mock():
     server = HTTPServer(host="0.0.0.0", port=8888)
     server.start()
 
-    server.expect_request("/get-client-alertmanagers", method="GET").respond_with_json([
-        {
-            "secret_name": "e2e-dummy",
-            "secret_data": {"host":"alrtmgr.e2e.dummy.domain","k8s_stack_name":"e2e-dummy-stack","password":"dummy-pw"},
-            "cloud_domain": "e2e.dummy.domain"
-        }
-    ])
+    server.expect_request("/get-client-alertmanagers", method="GET").respond_with_json(
+        [
+            {
+                "secret_name": "e2e-dummy",
+                "secret_data": {
+                    "host": "alrtmgr.e2e.dummy.domain",
+                    "k8s_stack_name": "e2e-dummy-stack",
+                    "password": "dummy-pw",
+                },
+                "cloud_domain": "e2e.dummy.domain",
+            }
+        ]
+    )
 
-    server.expect_request("/get-gotify-master", method="GET").respond_with_json({
-        "gotify_present": True,
-        "gotify_access": {
-            "host": "gotify.dummy.domain",
-            "password":"dummy-pw"
+    server.expect_request("/get-gotify-master", method="GET").respond_with_json(
+        {
+            "gotify_present": True,
+            "gotify_access": {"host": "gotify.dummy.domain", "password": "dummy-pw"},
         }
-    })
+    )
 
     return server
 
@@ -176,7 +181,6 @@ def controller_scenario(
         apply(
             "pxc-controller", scenario_name, get_k8s_api_v1, True, True
         )  # always upgrade to get tdd build provider and inject custom e2e rc
-
 
     # init aws moto mock server
     init_moto(get_proxmoxer, get_test_env)

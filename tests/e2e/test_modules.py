@@ -823,5 +823,5 @@ def test_mc_gw_get_alertmanagers(get_test_env, controller_scenario, set_pve_clou
         headers={"Authorization": "Bearer DEMO-MC-TOKEN"},
     )
     logger.info(response.text)
-    
+
     assert response.status_code == 200
