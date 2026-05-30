@@ -1,15 +1,50 @@
+# if a gotify is available inside the cloud we take this for sending alert notifications
+# however if there isnt we look through our multi cloud peers and select the first
+# we find for sending notifications. In the future we might want to support multiple
+
+# do the multi cloud discovery
+data "pxc_cloud_secret" "mc_discovery" {
+  secret_name = "mc_discovery"
+}
+
+locals {
+  mc_peers_set = data.pxc_cloud_secret.mc_discovery.secret_data != "" ? toset(jsondecode(data.pxc_cloud_secret.mc_discovery.secret_data).peers) : toset([])
+  mc_token = data.pxc_cloud_secret.mc_discovery.secret_data != "" ? jsondecode(data.pxc_cloud_secret.mc_discovery.secret_data).token : ""
+}
+
+# query the peers
+data "http" "gotify_master" {
+  # Convert the list to a set for for_each
+  for_each = toset(local.mc_peers_set)
+
+  url = "${each.value}/get-gotify-master"
+
+  request_headers = {
+    Authorization = "Bearer ${local.mc_token}"
+    Accept        = "application/json"
+  }
+}
+
 data "pxc_cloud_secret" "gotify_admin_pw" {
   secret_name = "gotify_admin_pw"
 }
 
 locals {
-  gotify_admin_pw = jsondecode(data.pxc_cloud_secret.gotify_admin_pw.secret_data)
+  mc_gotify_master_filtered = [for peer, response in data.http.gotify_master : jsondecode(response.response_body) if jsondecode(response.response_body).gotify_present ]
+  target_gotify = data.pxc_cloud_secret.gotify_admin_pw.secret_data != "" ? jsondecode(data.pxc_cloud_secret.gotify_admin_pw.secret_data) : local.mc_gotify_master_filtered[0].gotify_access
+}
+
+check "multi_master" {
+ assert {
+   condition     = (data.pxc_cloud_secret.gotify_admin_pw.secret_data != "" && length(local.mc_gotify_master_filtered) == 0) || (data.pxc_cloud_secret.gotify_admin_pw.secret_data == "" && length(local.mc_gotify_master_filtered) == 1)
+   error_message = "Master gotify within cloud / multi cloud peers not properly configured! There should only be a single master!"
+ }
 }
 
 # create application in gotify for notifications of the master k8s stack
 resource "pxc_gotify_app" "client_app" {
-  gotify_host = local.gotify_admin_pw.host
-  gotify_admin_pw = local.gotify_admin_pw.password
+  gotify_host = local.target_gotify.host
+  gotify_admin_pw = local.target_gotify.password
   app_name = "${data.pxc_cloud_self.self.stack_name}.${data.pxc_cloud_self.self.target_pve}"
   allow_insecure = var.insecure_tls
 }
@@ -56,13 +91,13 @@ resource "kubernetes_deployment" "alertmanager_gotify_bridge" {
 
         container {
           name  = "alertmanager-gotify"
-          image = "druggeri/alertmanager_gotify_bridge:latest"
+          image = "druggeri/alertmanager_gotify_bridge:2.3.2"
           port {
             container_port = 8080
           }
           env {
             name  = "GOTIFY_ENDPOINT"
-            value = "https://${local.gotify_admin_pw.host}/message"
+            value = "https://${local.target_gotify.host}/message"
           }
           env {
             name  = "GOTIFY_TOKEN"

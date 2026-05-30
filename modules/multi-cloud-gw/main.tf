@@ -92,7 +92,12 @@ resource "kubernetes_deployment_v1" "mc_gw_deployment" {
           name              = "mc-gw"
           image             = "${local.cloud_controller_image}:${local.cloud_controller_version}"
           image_pull_policy = "IfNotPresent"
-          command           = ["mc-gw"]
+          command           = ["gunicorn"]
+          args = [
+            "-w", "2",
+            "-b", "0.0.0.0:80",
+            "pve_cloud_ctrl.mc_gateway:app"
+          ]
 
           volume_mount {
             name       = "cluster-conf"

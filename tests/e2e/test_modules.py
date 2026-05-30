@@ -813,3 +813,15 @@ def test_mc_gw_get_acme_acc(get_test_env, controller_scenario, set_pve_cloud_aut
         headers={"Authorization": "Bearer DEMO-MC-TOKEN"},
     )
     logger.info(response.text)
+
+
+def test_mc_gw_get_alertmanagers(get_test_env, controller_scenario, set_pve_cloud_auth):
+    logger.info("mock test get acme account")
+
+    response = requests.get(
+        f"https://pxc-mc-gw.{get_test_env['kubernetes']['deployments_domain']}/get-client-alertmanagers",
+        headers={"Authorization": "Bearer DEMO-MC-TOKEN"},
+    )
+    logger.info(response.text)
+    
+    assert response.status_code == 200

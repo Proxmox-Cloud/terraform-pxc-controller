@@ -3,8 +3,35 @@ data "pxc_cloud_secrets" "mon_clients" {
   secret_type = "mon-alertmgr-client"
 }
 
+# fetch multi cloud peers, since this is the master stack we 
+# bundle all alerts here
+data "pxc_cloud_secret" "mc_discovery" {
+  secret_name = "mc_discovery"
+}
+
+locals {
+  mc_peers_set = data.pxc_cloud_secret.mc_discovery.secret_data != "" ? toset(jsondecode(data.pxc_cloud_secret.mc_discovery.secret_data).peers) : toset([])
+  mc_token = data.pxc_cloud_secret.mc_discovery.secret_data != "" ? jsondecode(data.pxc_cloud_secret.mc_discovery.secret_data).token : ""
+}
+
+# query the peers
+data "http" "client_alertmanagers" {
+  # Convert the list to a set for for_each
+  for_each = toset(local.mc_peers_set)
+
+  url = "${each.value}/get-client-alertmanagers"
+
+  request_headers = {
+    Authorization = "Bearer ${local.mc_token}"
+    Accept        = "application/json"
+  }
+}
+
 locals {
   mon_clients = jsondecode(data.pxc_cloud_secrets.mon_clients.secrets_data)
+  peer_alertmanagers = { 
+    for peer, response in data.http.client_alertmanagers : peer => jsondecode(response.response_body) 
+  }
   karma_conf = yamlencode({
       history = {
         enabled = false # no direct access to prometheus instances
@@ -37,7 +64,23 @@ locals {
           headers = {
             Authorization = "Basic ${base64encode("karma:${mon_client_secret["password"]}")}"
           }
-        }]
+        }],
+        flatten([ for peer, alertmanagers in local.peer_alertmanagers : [
+          for alertmanager in alertmanagers : {
+            name = "${alertmanager["secret_data"]["k8s_stack_name"]}.${alertmanager["cloud_domain"]}"
+            uri = "https://${alertmanager["secret_data"]["host"]}/"
+            proxy = true
+            healthcheck = {
+              # filters out the default watchdog alert
+              filters = {
+                "pve-cloud-monitoring-master/kube-prometheus-stack-prometheus" = [ "alertname=Watchdog" ]
+              }
+            }
+            headers = {
+              Authorization = "Basic ${base64encode("karma:${alertmanager["secret_data"]["password"]}")}"
+            }
+          }
+        ]])
         )
       }
       # ui settings, custom colors and severity labels

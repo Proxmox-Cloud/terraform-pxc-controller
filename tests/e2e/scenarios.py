@@ -16,6 +16,7 @@ from pve_cloud_test.cloud_fixtures import *
 from pve_cloud_test.k8s_fixtures import *
 from pve_cloud_test.tdd_watchdog import get_ipv4
 from pve_cloud_test.terraform import apply, destroy
+from pytest_httpserver import HTTPServer
 
 logger = logging.getLogger(__name__)
 
@@ -82,6 +83,29 @@ def init_moto(proxmox, get_test_env):
     assert list_resp["HostedZones"]
 
     return client
+
+
+def get_mc_gw_http_mock():
+    server = HTTPServer(host="0.0.0.0", port=8888)
+    server.start()
+
+    server.expect_request("/get-client-alertmanagers", method="GET").respond_with_json([
+        {
+            "secret_name": "e2e-dummy",
+            "secret_data": {"host":"alrtmgr.e2e.dummy.domain","k8s_stack_name":"e2e-dummy-stack","password":"dummy-pw"},
+            "cloud_domain": "e2e.dummy.domain"
+        }
+    ])
+
+    server.expect_request("/get-gotify-master", method="GET").respond_with_json({
+        "gotify_present": True,
+        "gotify_access": {
+            "host": "gotify.dummy.domain",
+            "password":"dummy-pw"
+        }
+    })
+
+    return server
 
 
 @pytest.fixture(scope="session")
@@ -153,6 +177,7 @@ def controller_scenario(
             "pxc-controller", scenario_name, get_k8s_api_v1, True, True
         )  # always upgrade to get tdd build provider and inject custom e2e rc
 
+
     # init aws moto mock server
     init_moto(get_proxmoxer, get_test_env)
 
@@ -172,7 +197,12 @@ def deployments_scenario(request, controller_scenario, get_k8s_api_v1):
     os.environ["TF_VAR_nginx_rnd_hostname"] = random_nginx_test_name
 
     if not request.config.getoption("--skip-apply"):
+        # multi cloud gateway peer sim
+        server = get_mc_gw_http_mock()
+
         apply("pxc-controller", scenario_name, get_k8s_api_v1, True, True)
+        server.stop()
+
         time.sleep(10)  # ingress dns time
 
     yield {"random_nginx_test_name": random_nginx_test_name}
@@ -210,11 +240,17 @@ def secondary_scenario(
     scenario_name = "secondary"
 
     if not request.config.getoption("--skip-apply"):
+        # multi cloud gateway peer sim
+        server = get_mc_gw_http_mock()
+
         apply("pxc-controller", "secondary", get_k8s_secondary_api_v1, True, True)
+
         # after having registered our client we also need to run the deployments scenario again for the master monitoring to pick up on this
         # todo: this could be made faster by first checking if the secrets exist and only
         # applying when they were first created
         apply("pxc-controller", "deployments", get_k8s_api_v1, True, True)
+
+        server.stop()
 
     yield
 

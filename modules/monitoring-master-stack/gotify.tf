@@ -102,7 +102,7 @@ resource "kubernetes_deployment" "alertmanager_gotify_bridge" {
         
         container {
           name  = "alertmanager-gotify"
-          image = "druggeri/alertmanager_gotify_bridge:latest"
+          image = "druggeri/alertmanager_gotify_bridge:2.3.2"
           port {
             container_port = 8080
           }

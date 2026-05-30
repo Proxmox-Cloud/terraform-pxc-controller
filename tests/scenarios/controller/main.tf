@@ -73,7 +73,7 @@ module "multi_cloud_gateway" {
 
   multi_cloud_token = "DEMO-MC-TOKEN"
   multi_cloud_gateway_host = "pxc-mc-gw.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
-  multi_cloud_peers = [ "http://${var.dev_machine_ipv4}:8888" ] # todo: insert mock endpoint
+  multi_cloud_peers = [ "http://${var.dev_machine_ipv4}:8888" ]
 
   node_selector = {
     "kubernetes.io/os" = "linux"
@@ -207,5 +207,6 @@ resource "helm_release" "harbor" {
 
   timeout = 1200
 }
+
 
 
