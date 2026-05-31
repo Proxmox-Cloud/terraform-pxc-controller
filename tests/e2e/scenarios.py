@@ -110,20 +110,22 @@ def get_mc_gw_http_mock():
         }
     )
 
-    server.expect_request("/get-victoria-clients", method="GET").respond_with_json([
-        {
-            "secret_name": "e2e-dummy",
-            "secret_data": {"host":"vlogs.e2e.dummy.domain","k8s_stack_name":"e2e-dummy-stack"},
-            "cloud_domain": "e2e.dummy.domain"
-        }
-    ])
+    server.expect_request("/get-victoria-clients", method="GET").respond_with_json(
+        [
+            {
+                "secret_name": "e2e-dummy",
+                "secret_data": {
+                    "host": "vlogs.e2e.dummy.domain",
+                    "k8s_stack_name": "e2e-dummy-stack",
+                },
+                "cloud_domain": "e2e.dummy.domain",
+            }
+        ]
+    )
 
-    server.expect_request("/get-vlselect-auth", method="GET").respond_with_json({
-        "auth_present": True,
-        "vlselect_auth": {
-            "password":"dummy-pw"
-        }
-    })
+    server.expect_request("/get-vlselect-auth", method="GET").respond_with_json(
+        {"auth_present": True, "vlselect_auth": {"password": "dummy-pw"}}
+    )
     return server
 
 
