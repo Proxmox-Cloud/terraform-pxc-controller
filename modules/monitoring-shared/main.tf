@@ -137,7 +137,7 @@ output "scrape_config" {
                     job_name = "pve-metrics"
                     dns_sd_configs = [
                         {
-                            names = [ "graphite-exporter-headless.pve-cloud-monitoring-master.svc.cluster.local" ]
+                            names = [ "graphite-exporter-headless.${var.namespace}.svc.cluster.local" ]
                             type = "A"
                             port = 9108
                         }
