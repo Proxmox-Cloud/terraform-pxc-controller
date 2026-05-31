@@ -26,6 +26,27 @@ data "pxc_cloud_secrets" "vlogs_clients" {
   secret_type = "vlogs-storage-node"
 }
 
+# we also add clients from multi cloud peers here
+
+# query the peers
+data "http" "victoria_clients" {
+  # Convert the list to a set for for_each
+  for_each = toset(local.mc_peers_set)
+
+  url = "${each.value}/get-victoria-clients"
+
+  request_headers = {
+    Authorization = "Bearer ${local.mc_token}"
+    Accept        = "application/json"
+  }
+}
+
+locals {
+  peer_victoria_clients = { 
+    for peer, response in data.http.victoria_clients : peer => jsondecode(response.response_body) 
+  }
+}
+
 # replace ingress with oauth / use victoria method?
 resource "helm_release" "vlogs_ml" {
   repository = "https://victoriametrics.github.io/helm-charts/"
@@ -58,7 +79,10 @@ resource "helm_release" "vlogs_ml" {
     ,yamlencode({
       storageNodes = concat([
         for vlogs_client in jsondecode(data.pxc_cloud_secrets.vlogs_clients.secrets_data) : vlogs_client.host
-      ], ["vlogs.${var.ingress_apex}"]) # we cant go direct because extraargs tls sets it for all storage nodes
+      ], ["vlogs.${var.ingress_apex}"],
+      flatten([ for peer, vclients in local.peer_victoria_clients :
+        [ for client in vclients : client.secret_data.host ]
+      ])) # we cant go direct because extraargs tls sets it for all storage nodes
     })
   ]
 

@@ -4,6 +4,32 @@ data "pxc_cloud_secret" "vlogs_storage_node_pw" {
   secret_name = "${local.cluster_vars.pve_cloud_domain}-vlogs-storage-node"
 }
 
+# here we apply the same multi cloud logic as for gotify
+data "http" "vlselect_auth" {
+  # Convert the list to a set for for_each
+  for_each = toset(local.mc_peers_set)
+
+  url = "${each.value}/get-vlselect-auth"
+
+  request_headers = {
+    Authorization = "Bearer ${local.mc_token}"
+    Accept        = "application/json"
+  }
+}
+
+locals {
+  mc_vlselect_master_filtered = [for peer, response in data.http.vlselect_auth : jsondecode(response.response_body) if jsondecode(response.response_body).auth_present ]
+  vlselect_auth_password = data.pxc_cloud_secret.vlogs_storage_node_pw.secret_data != "" ? jsondecode(data.pxc_cloud_secret.vlogs_storage_node_pw.secret_data).password : local.mc_vlselect_master_filtered[0].vlselect_auth.password
+}
+
+check "multi_auth" {
+ assert {
+   condition     = (data.pxc_cloud_secret.vlogs_storage_node_pw.secret_data != "" && length(local.mc_vlselect_master_filtered) == 0) || (data.pxc_cloud_secret.vlogs_storage_node_pw.secret_data == "" && length(local.mc_vlselect_master_filtered) == 1)
+   error_message = "Vlselect multiselect within cloud / multi cloud peers not properly configured! There should only be a instance deployed!"
+ }
+}
+
+
 resource "kubernetes_secret" "basic_auth_secret_vlogs" {
   type = "Opaque"
   metadata {
@@ -11,7 +37,7 @@ resource "kubernetes_secret" "basic_auth_secret_vlogs" {
     namespace = kubernetes_namespace.mon_ns.metadata[0].name
   }
   data = {
-    "auth" : "vlogs:${bcrypt(jsondecode(data.pxc_cloud_secret.vlogs_storage_node_pw.secret_data).password)}"
+    "auth" : "vlogs:${bcrypt(local.vlselect_auth_password)}"
   }
 }
 
@@ -76,7 +102,7 @@ resource "pxc_cloud_secret" "vlogs_cluster_journald" {
   secret_name = "${data.pxc_cloud_self.self.stack_name}.${data.pxc_cloud_self.self.target_pve}-vlogs-journald"
   secret_data = jsonencode({
     target_pve = data.pxc_cloud_self.self.target_pve # this becomes the vlogs database target for all
-    basic_pw = jsondecode(data.pxc_cloud_secret.vlogs_storage_node_pw.secret_data).password
+    basic_pw = local.vlselect_auth_password
     host = var.victorialogs_host
   })
   secret_type = "vlogs-cluster-journald"

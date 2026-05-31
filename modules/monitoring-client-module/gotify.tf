@@ -2,16 +2,6 @@
 # however if there isnt we look through our multi cloud peers and select the first
 # we find for sending notifications. In the future we might want to support multiple
 
-# do the multi cloud discovery
-data "pxc_cloud_secret" "mc_discovery" {
-  secret_name = "mc_discovery"
-}
-
-locals {
-  mc_peers_set = data.pxc_cloud_secret.mc_discovery.secret_data != "" ? toset(jsondecode(data.pxc_cloud_secret.mc_discovery.secret_data).peers) : toset([])
-  mc_token = data.pxc_cloud_secret.mc_discovery.secret_data != "" ? jsondecode(data.pxc_cloud_secret.mc_discovery.secret_data).token : ""
-}
-
 # query the peers
 data "http" "gotify_master" {
   # Convert the list to a set for for_each
