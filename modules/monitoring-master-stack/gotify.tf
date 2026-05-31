@@ -148,6 +148,7 @@ resource "pxc_cloud_secret" "gotify_pw" {
   secret_data = jsonencode({
     host = "gotify.${var.ingress_apex}"
     password = random_password.gotify_admin_pw.result
+    cloud_domain = local.cluster_vars.pve_cloud_domain
   })
 }
 
@@ -156,4 +157,5 @@ resource "pxc_cloud_secret" "gotify_pw" {
 resource "pxc_pve_gotify_target" "master_target" {
   gotify_host = "gotify.${var.ingress_apex}"
   gotify_token = pxc_gotify_app.master_app.app_token
+  gotify_cloud_domain = local.cluster_vars.pve_cloud_domain
 }

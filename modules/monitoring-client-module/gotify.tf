@@ -128,4 +128,5 @@ resource "pxc_pve_gotify_target" "master_target" {
   count = var.monitor_proxmox_cluster ? 1 : 0
   gotify_host = local.target_gotify.host
   gotify_token = pxc_gotify_app.client_app.app_token
+  gotify_cloud_domain = local.target_gotify.cloud_domain
 }
