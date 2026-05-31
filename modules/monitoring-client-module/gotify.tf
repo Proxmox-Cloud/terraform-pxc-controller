@@ -120,3 +120,12 @@ resource "kubernetes_service" "alertmanager_gotify" {
     type = "ClusterIP"
   }
 }
+
+# this will create gotify notifcation matchers and targets on the proxmox cluster
+# datacenter level. it will either use the gotify within the cloud or the first defined
+# amongst all its cloud peers
+resource "pxc_pve_gotify_target" "master_target" {
+  count = var.monitor_proxmox_cluster ? 1 : 0
+  gotify_host = local.target_gotify.host
+  gotify_token = pxc_gotify_app.client_app.app_token
+}
