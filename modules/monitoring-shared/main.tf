@@ -16,7 +16,7 @@ data "pxc_cloud_self" "self" {}
 locals {
   cluster_vars = yamldecode(data.pxc_cloud_self.self.cluster_vars)
 
-  cluster_hosts = var.monitor_proxmox_cluster ? yamldecode(data.pxc_pve_inventory.inv[0].inventory)[local.cluster_vars.pve_cluster_name] : {}
+  cluster_hosts = var.monitor_proxmox_cluster ? yamldecode(data.pxc_pve_inventory.inv[0].inventory)[local.cluster_vars.pve_cluster_name]["pve_hosts"] : {}
 
   ceph_mon_hosts = var.monitor_proxmox_cluster ? split(" ",trimspace(regex("mon_host\\s=\\s([0-9. ]+)", data.pxc_ceph_access.ceph_access[0].ceph_conf)[0])) : []
 
