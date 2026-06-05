@@ -503,6 +503,7 @@ def test_ingress_dns(get_test_env, set_pve_cloud_auth, deployments_scenario):
 def test_monitoring_alert_rules(get_test_env, deployments_scenario):
     logger.info("test prometheus alert manager rules firing")
 
+    logger.info(f"querying http://alertmgr.{get_test_env['kubernetes']['deployments_domain']}/api/v2/alerts")
     response = requests.get(
         f"http://alertmgr.{get_test_env['kubernetes']['deployments_domain']}/api/v2/alerts",
         timeout=5,
