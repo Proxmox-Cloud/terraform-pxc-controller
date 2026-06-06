@@ -2,7 +2,7 @@ import logging
 import socket
 import ssl
 import time
-
+import tempfile
 import dns.query
 import dns.tsigkeyring
 import dns.zone
@@ -16,6 +16,10 @@ from kubernetes.client import V1Job, V1JobSpec, V1ObjectMeta
 from kubernetes.client.rest import ApiException
 from kubernetes.stream import stream
 from pytest_httpserver import HTTPServer
+from kubernetes import client, config
+
+from pve_cloud_test.k8s_fixtures import *
+from pve_cloud_test.cloud_fixtures import *
 from scenarios import *
 
 logger = logging.getLogger(__name__)

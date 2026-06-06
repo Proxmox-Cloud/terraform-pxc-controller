@@ -12,11 +12,10 @@ import redis
 import yaml
 from kubernetes import client, config
 from proxmoxer import ProxmoxAPI
-from pve_cloud_test.cloud_fixtures import *
-from pve_cloud_test.k8s_fixtures import *
 from pve_cloud_test.tdd_watchdog import get_ipv4
 from pve_cloud_test.terraform import apply, destroy
 from pytest_httpserver import HTTPServer
+from pve_cloud_test.cloud_fixtures import get_tdd_version
 
 logger = logging.getLogger(__name__)
 
