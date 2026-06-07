@@ -2,7 +2,7 @@ terraform {
   required_providers {
     pxc = {
       source = "Proxmox-Cloud/pxc"
-      version = "3.2.4-rc1" # pxc sed ci - DONT REMOVE COMMENT!
+      version = "3.2.4-rc2" # pxc sed ci - DONT REMOVE COMMENT!
     }
     dns = {
       source = "hashicorp/dns"
