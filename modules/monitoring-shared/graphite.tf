@@ -98,13 +98,13 @@ resource "kubernetes_service" "graphite_exporter" {
 
 
 # find worker node, any is fine for udp metrics target
-data "dns_a_record_set" "workers" {
+data "pxc_dns_a_record_set" "workers" {
   host = "workers-${data.pxc_cloud_self.self.stack_name}.${local.cluster_vars.pve_cloud_domain}"
 }
 
 resource "pxc_pve_graphite_exporter" "exporter" {
   count = var.monitor_proxmox_cluster ? 1 : 0
   exporter_name = data.pxc_cloud_self.self.stack_name
-  server = data.dns_a_record_set.workers.addrs[0]
+  server = data.pxc_dns_a_record_set.workers.addrs[0]
   port = 30109 # same as nodeport
 }
