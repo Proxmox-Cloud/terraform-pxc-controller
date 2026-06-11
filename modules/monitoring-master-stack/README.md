@@ -4,6 +4,8 @@ This will host uis, alerting configs and exporters for montoring related to your
 
 Contains a karma ui instance for visualizing alerts aswell as a gotify application for critical notifications.
 
+On the first apply you have to first target the discovery secret datasource by adding `-target=module.XYZ.data.pxc_cloud_secret.mc_discovery`.
+
 ## Proxmox backup server
 
 If you use a proxmox backup server you can configure the gotify in this stack as a target for notifications.

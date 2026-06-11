@@ -29,64 +29,10 @@ provider "pxc" {
   inventory = var.e2e_kubespray_inv
 }
 
-module "controller" {
-  source = "../../../"
+resource "time_sleep" "wait_for_moto" {
+  depends_on =  [ kubernetes_manifest.moto_deployment ]
 
-  cloud_controller_image = var.cloud_controller_image
-  cloud_controller_version = var.cloud_controller_version
-  
-  adm_controller_replicas = 1 # for easier log reading
-
-  route53_access_key_id = "test"
-  route53_secret_access_key = "test"
-  external_forwarded_ip = "127.0.0.1" # test too
-  route53_endpoint_url = "http://pve-cloud-moto.moto-mock.svc.cluster.local:5000"
-
-  exclude_mirror_namespaces = ["harbor"]
-
-  log_level = "DEBUG"
-
-  node_selector = {
-    "kubernetes.io/os" = "linux"
-  }
-
-  tolerations = [
-    {
-      "key" = "example"
-      "operator" = "Equal"
-      "value" = "test"
-      "effect" = "NoSchedule"
-     }
-  ]
-
-  harbor_mirror_host = "harbor.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
-}
-
-module "multi_cloud_gateway" {
-  depends_on = [ module.controller ]
-  source = "../../../modules/multi-cloud-gw"
-
-  cloud_controller_image = var.cloud_controller_image
-  cloud_controller_version = var.cloud_controller_version
-  
-  mc_gw_replicas = 1 # for easier log reading
-
-  multi_cloud_token = "DEMO-MC-TOKEN"
-  multi_cloud_gateway_host = "pxc-mc-gw.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
-  multi_cloud_peers = [ "http://${var.dev_machine_ipv4}:8888" ]
-
-  node_selector = {
-    "kubernetes.io/os" = "linux"
-  }
-
-  tolerations = [
-    {
-      "key" = "example"
-      "operator" = "Equal"
-      "value" = "test"
-      "effect" = "NoSchedule"
-     }
-  ]
+  create_duration = "3m"
 }
 
 resource "kubernetes_namespace" "moto_mock" {
@@ -149,6 +95,74 @@ resource "kubernetes_manifest" "moto_service" {
   )
 }
 
+module "controller" {
+  depends_on = [ time_sleep.wait_for_moto ]
+  source = "../../../"
+
+  cloud_controller_image = var.cloud_controller_image
+  cloud_controller_version = var.cloud_controller_version
+  
+  adm_controller_replicas = 1 # for easier log reading
+
+  route53_access_key_id = "test"
+  route53_secret_access_key = "test"
+  external_forwarded_ip = "127.0.0.1" # test too
+  route53_endpoint_url = "http://pve-cloud-moto.moto-mock.svc.cluster.local:5000"
+
+  exclude_mirror_namespaces = ["harbor"]
+
+  log_level = "DEBUG"
+
+  node_selector = {
+    "kubernetes.io/os" = "linux"
+  }
+
+  tolerations = [
+    {
+      "key" = "example"
+      "operator" = "Equal"
+      "value" = "test"
+      "effect" = "NoSchedule"
+     }
+  ]
+
+  harbor_mirror_host = "harbor.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
+}
+
+resource "time_sleep" "wait_for_controller" {
+  depends_on =  [ module.controller ]
+
+  create_duration = "3m"
+}
+
+module "multi_cloud_gateway" {
+  depends_on = [ module.controller ]
+  source = "../../../modules/multi-cloud-gw"
+
+  cloud_controller_image = var.cloud_controller_image
+  cloud_controller_version = var.cloud_controller_version
+  
+  mc_gw_replicas = 1 # for easier log reading
+
+  multi_cloud_token = "DEMO-MC-TOKEN"
+  multi_cloud_gateway_host = "pxc-mc-gw.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
+  multi_cloud_peers = [ "http://${var.dev_machine_ipv4}:8888" ]
+
+  node_selector = {
+    "kubernetes.io/os" = "linux"
+  }
+
+  tolerations = [
+    {
+      "key" = "example"
+      "operator" = "Equal"
+      "value" = "test"
+      "effect" = "NoSchedule"
+     }
+  ]
+}
+
+
 # test age secret
 resource "pxc_cloud_age_secret" "test" {
   secret_name = "age-test"
@@ -165,11 +179,6 @@ resource "random_password" "harbor_pw" {
   length = 24
 }
 
-resource "time_sleep" "wait_for_controller" {
-  depends_on =  [ module.controller ]
-
-  create_duration = "3m"
-}
 
 resource "helm_release" "harbor" {
   depends_on = [ time_sleep.wait_for_controller ]

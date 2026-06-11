@@ -40,6 +40,12 @@ module "controller" {
   harbor_mirror_host = "harbor.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
 }
 
+resource "time_sleep" "wait_for_controller" {
+  depends_on =  [ module.controller ]
+
+  create_duration = "3m"
+}
+
 resource "helm_release" "openebs" {
   repository = "https://openebs.github.io/openebs"
   chart = "openebs"
@@ -69,7 +75,7 @@ resource "helm_release" "openebs" {
 
 // deploy the client module
 module "tf_monitoring" {
-  depends_on = [ helm_release.openebs ]
+  depends_on = [ helm_release.openebs, time_sleep.wait_for_controller ]
   source = "../../../modules/monitoring-client-module"
 
   alertmanager_host = "alrtmgr-secondary.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"

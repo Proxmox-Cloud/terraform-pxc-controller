@@ -527,6 +527,7 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
             "KubeAPIErrorBudgetBurn",
             "haproxy all backends down",
             "Errors Critical",
+            "ram usage critical"
         ]:
             logger.error(alert)
             critical_alerts.append(alert["labels"]["alertname"])
