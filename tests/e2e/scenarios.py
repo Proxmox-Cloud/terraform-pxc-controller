@@ -196,10 +196,15 @@ def controller_scenario(
         # read datasources apply first
         # todo: optimize with more terraform provider resources
         apply(
-            "pxc-controller", scenario_name, get_k8s_api_v1, True, True, apply_args=[
-            "-target=module.controller.data.pxc_cloud_secret.harbor_mirror",
-            "-target=module.controller.data.pxc_cloud_secret.harbor_admin"
-        ]
+            "pxc-controller",
+            scenario_name,
+            get_k8s_api_v1,
+            True,
+            True,
+            apply_args=[
+                "-target=module.controller.data.pxc_cloud_secret.harbor_mirror",
+                "-target=module.controller.data.pxc_cloud_secret.harbor_admin",
+            ],
         )  # always upgrade to get tdd build provider and inject custom e2e rc
 
         apply(
@@ -227,10 +232,19 @@ def deployments_scenario(request, controller_scenario, get_k8s_api_v1):
     if not request.config.getoption("--skip-apply"):
         # multi cloud gateway peer sim
         server = get_mc_gw_http_mock()
-        
+
         # todo: this should be only done once, maybe keep track with redis key
         # first target apply mc_peers
-        apply("pxc-controller", scenario_name, get_k8s_api_v1, True, True, apply_args=["-target=module.tf_monitoring.data.pxc_cloud_secret.mc_discovery"])
+        apply(
+            "pxc-controller",
+            scenario_name,
+            get_k8s_api_v1,
+            True,
+            True,
+            apply_args=[
+                "-target=module.tf_monitoring.data.pxc_cloud_secret.mc_discovery"
+            ],
+        )
 
         # main apply
         apply("pxc-controller", scenario_name, get_k8s_api_v1, True, True)
@@ -278,11 +292,18 @@ def secondary_scenario(
 
         # first target apply mc_peers
         # todo: this should be only done once, maybe keep track with redis key
-        apply("pxc-controller", "secondary", get_k8s_secondary_api_v1, True, True, apply_args=[
-            "-target=module.tf_monitoring.data.pxc_cloud_secret.mc_discovery",
-            "-target=module.controller.data.pxc_cloud_secret.harbor_mirror",
-            "-target=module.controller.data.pxc_cloud_secret.harbor_admin"
-        ])
+        apply(
+            "pxc-controller",
+            "secondary",
+            get_k8s_secondary_api_v1,
+            True,
+            True,
+            apply_args=[
+                "-target=module.tf_monitoring.data.pxc_cloud_secret.mc_discovery",
+                "-target=module.controller.data.pxc_cloud_secret.harbor_mirror",
+                "-target=module.controller.data.pxc_cloud_secret.harbor_admin",
+            ],
+        )
 
         # main apply
         apply("pxc-controller", "secondary", get_k8s_secondary_api_v1, True, True)
