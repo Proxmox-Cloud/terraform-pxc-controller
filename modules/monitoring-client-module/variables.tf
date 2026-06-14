@@ -100,3 +100,9 @@ variable "tolerations" {
   default = null
   description = "Tolerations to add to all controller deployments/jobs."
 }
+
+variable "logging_only" {
+  type = bool
+  default = false
+  description = "Turns off alerting features and only funnels logs to the master cloud monitoring stack."
+}

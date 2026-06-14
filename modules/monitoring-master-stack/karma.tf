@@ -3,7 +3,8 @@ data "pxc_cloud_secrets" "mon_clients" {
   secret_type = "mon-alertmgr-client"
 }
 
-# query the peers
+# query the peers, here terraform doesnt shit the bed
+# because we dont use it to dynamically create resources
 data "http" "client_alertmanagers" {
   # Convert the list to a set for for_each
   for_each = toset(local.mc_peers_set)

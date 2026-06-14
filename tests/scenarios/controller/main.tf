@@ -23,6 +23,7 @@ variable "e2e_kubespray_inv" {
 
 variable "dev_machine_ipv4" {
   type = string
+  default = null
 }
 
 provider "pxc" {
@@ -30,9 +31,9 @@ provider "pxc" {
 }
 
 resource "time_sleep" "wait_for_moto" {
-  depends_on =  [ kubernetes_manifest.moto_deployment ]
+  depends_on =  [ kubernetes_manifest.moto_deployment, kubernetes_manifest.moto_service ]
 
-  create_duration = "3m"
+  create_duration = "1m"
 }
 
 resource "kubernetes_namespace" "moto_mock" {
@@ -132,7 +133,7 @@ module "controller" {
 resource "time_sleep" "wait_for_controller" {
   depends_on =  [ module.controller ]
 
-  create_duration = "3m"
+  create_duration = "1m"
 }
 
 module "multi_cloud_gateway" {
@@ -179,15 +180,19 @@ resource "random_password" "harbor_pw" {
   length = 24
 }
 
+resource "kubernetes_namespace_v1" "harbor" {
+  depends_on = [ time_sleep.wait_for_controller ]
+  metadata {
+    name = "harbor"
+  }
+}
 
 resource "helm_release" "harbor" {
-  depends_on = [ time_sleep.wait_for_controller ]
   repository = "https://helm.goharbor.io"
   chart = "harbor"
   version = "1.18.1"
   name = "harbor"
-  namespace = "harbor"
-  create_namespace = true
+  namespace = kubernetes_namespace_v1.harbor.metadata[0].name
 
   values = [
     # minimal config for ram optimized usage + nodeport for ssh shell
@@ -216,6 +221,3 @@ resource "helm_release" "harbor" {
 
   timeout = 1200
 }
-
-
-

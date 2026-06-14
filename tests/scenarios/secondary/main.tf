@@ -7,7 +7,7 @@ locals {
   test_pve_conf = yamldecode(file(var.test_pve_conf))
 }
 
-variable "e2e_secondary_kubespray_inv" {
+variable "e2e_kubespray_inv" {
   type = string
 }
 
@@ -23,7 +23,7 @@ variable "cloud_controller_version" {
 
 
 provider "pxc" {
-  inventory = var.e2e_secondary_kubespray_inv
+  inventory = var.e2e_kubespray_inv
 }
 
 module "controller" {
@@ -43,7 +43,7 @@ module "controller" {
 resource "time_sleep" "wait_for_controller" {
   depends_on =  [ module.controller ]
 
-  create_duration = "3m"
+  create_duration = "1m"
 }
 
 resource "helm_release" "openebs" {
@@ -91,10 +91,6 @@ module "tf_monitoring" {
 
   victorialogs_sc_name = "openebs-hostpath"
 
-  # for this to work the secondary cluster would also need ceph
-  # its not optional / toggable
-  # monitor_proxmox_cluster = true
-
   node_selector = {
     "kubernetes.io/os" = "linux"
   }
@@ -109,9 +105,7 @@ module "tf_monitoring" {
   ]
 }
 
-data "pxc_pve_inventory" "inv" {
-  
-}
+data "pxc_pve_inventory" "inv" {}
 
 output "inv" {
   value = data.pxc_pve_inventory.inv
@@ -121,4 +115,50 @@ data "pxc_cloud_self" "self" {}
 
 output "self" {
   value = data.pxc_cloud_self.self
+}
+
+# use secondary to dummy test external acme tls gen
+provider "pxc" {
+  cloud_domain = local.test_pve_conf["cloud_inventory"]["pve_cloud_domain"]
+  target_cluster = local.test_pve_conf["pve_test_cluster_name"]
+  external_stack_name = "pytest-external"
+  alias = "external"
+}
+
+module "external_acme" { 
+  providers = {
+    pxc = pxc.external
+  }
+
+  source = "../../../modules/external-acme-tls-csr"
+  cert_config = [
+    {
+      zone = local.test_pve_conf["kubernetes"]["deployments_domain"]
+      apex_zone_san = true
+      names = [ "secondary-acme-test", "secondary-acme-test2" ]
+    },
+    {
+      zone = "test.zone"
+      names = [ "acme-test" ]
+    }
+  ]
+}
+
+output "ext_acme_out" {
+  value = {
+    config = module.external_acme.config
+    ec_csr = module.external_acme.ec_csr
+  }
+}
+
+module "ext_pxc_controller" {
+  providers = {
+    pxc = pxc.external
+  }
+
+  source = "../../../modules/external-pxc-controller"
+  cloud_controller_image = var.cloud_controller_image
+  cloud_controller_version = var.cloud_controller_version
+
+  log_level = "DEBUG"
 }

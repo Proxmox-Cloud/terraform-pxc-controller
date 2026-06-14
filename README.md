@@ -2,8 +2,6 @@
 
 Installs the proxmox cloud controller deployment on K8S.
 
-On the first apply you have to first target the discovery secret datasource by adding `-target=module.XYZ.data.pxc_cloud_secret.harbor_mirror -target=module.XYZ.data.pxc_cloud_secret.harbor_admin`.
-
 In the [samples](https://github.com/Proxmox-Cloud/pve_cloud/blob/master/samples/kubespray-cluster/terraform/cloud-deployments.tf) you can see the [kubnernetes proxmox cloud controller](https://registry.terraform.io/modules/Proxmox-Cloud/controller/pxc/latest) being deployed with minimal features enabled.
 
 The deployment comes with a varity of features that are toggled on by passing optional terraform variables to the terraform module:

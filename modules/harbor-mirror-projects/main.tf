@@ -54,6 +54,7 @@ resource "harbor_project" "docker_hub_cache" {
 # webhooks create fully standalone mirrored images
 resource "harbor_project" "cloud_mirror" {
   name        = "cloud-mirror"
+  force_destroy = true
 }
 
 # pull access to caches and mirror repositories

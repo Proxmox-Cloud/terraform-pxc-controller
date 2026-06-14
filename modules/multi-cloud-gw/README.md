@@ -28,3 +28,7 @@ To give the token to other clusters, use the terraform `pxc_cloud_secret` and `p
 This module should get a `depends_on = [ module.controller ]`, as it needs the namespace of the main module.
 
 For the discovery to pick up you need to run `terraform apply` twice.
+
+## External Kubernetes Clusters
+
+Deploying the gateway also enables the usage of external-* pxc cloud controller functionalities. The discovery and secret generation is automatic.

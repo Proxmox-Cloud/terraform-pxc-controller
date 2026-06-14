@@ -42,134 +42,199 @@ locals {
 
 # try to fetch mirror credentials if available
 data "pxc_cloud_secret" "harbor_mirror" {
-  count = var.harbor_mirror_host != null ? 1 : 0
   secret_name = "${var.harbor_mirror_host}-mirror"
 }
 
 data "pxc_cloud_secret" "harbor_admin" {
-  count = var.harbor_mirror_host != null ? 1 : 0
   secret_name = "${var.harbor_mirror_host}-admin"
 }
 
 locals {
-  harbor_mirror_auth = var.harbor_mirror_host != null && data.pxc_cloud_secret.harbor_mirror[0].secret_data != "" ? jsondecode(data.pxc_cloud_secret.harbor_mirror[0].secret_data) : null
-  harbor_admin_auth = var.harbor_mirror_host != null && data.pxc_cloud_secret.harbor_admin[0].secret_data != "" ? jsondecode(data.pxc_cloud_secret.harbor_admin[0].secret_data) : null
+  harbor_mirror_auth = var.harbor_mirror_host != null && data.pxc_cloud_secret.harbor_mirror.secret_data != "" ? jsondecode(data.pxc_cloud_secret.harbor_mirror.secret_data) : null
+  harbor_admin_auth = var.harbor_mirror_host != null && data.pxc_cloud_secret.harbor_admin.secret_data != "" ? jsondecode(data.pxc_cloud_secret.harbor_admin.secret_data) : null
+  
+  # the secrets get created through the harbor mirror projects module
+  harbor_mirror_enabled = var.harbor_mirror_host != null && local.harbor_mirror_auth != null && local.harbor_admin_auth != null
 }
 
-# optionally create mirror pull secret
+# todo: this should be ported to helm so we dont have to create dummy secrets to get around terraforms limitations
+# count = doesnt work here because it is sourced from unknown
 resource "kubernetes_secret" "mirror_pull_secret" {
-  count = var.harbor_mirror_host != null && local.harbor_mirror_auth != null ? 1 : 0
   metadata {
     namespace = kubernetes_namespace.pve_cloud_controller.metadata[0].name
-    name = "mirror-pull-secret"
+    name = local.harbor_mirror_enabled ? "mirror-pull-secret" : "mps-undefined" # fuck tf
   }
   data = {
-    ".dockerconfigjson" = local.harbor_mirror_auth.dockerconfig
-  }
+    ".dockerconfigjson" =  local.harbor_mirror_enabled ? local.harbor_mirror_auth.dockerconfig : "{}"
+  } 
+
   type = "kubernetes.io/dockerconfigjson"
 }
 
-resource "kubernetes_manifest" "ns_watcher" {
-  manifest = yamldecode(<<-YAML
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
-      name: pve-cloud-ns-watcher
-      namespace: ${kubernetes_namespace.pve_cloud_controller.metadata[0].name}
-      labels:
-        app.kubernetes.io/name: pve-cloud-ns-watcher
-        app.kubernetes.io/version: '${local.cloud_controller_version}'
-    spec:
-      replicas: 1
-      selector:
-        matchLabels:
-          app.kubernetes.io/name: pve-cloud-ns-watcher
-      template:
-        metadata:
-          labels:
-            app.kubernetes.io/name: pve-cloud-ns-watcher
-            app.kubernetes.io/version: '${local.cloud_controller_version}'
-        spec:
-    %{ if var.node_selector != null }
-          nodeSelector:
-            ${indent(8, yamlencode(var.node_selector))}
-    %{ endif }
-    %{ if var.tolerations != null }
-          tolerations:
-            ${indent(8, yamlencode(var.tolerations))}
-    %{ endif }
-          priorityClassName: system-cluster-critical
-          containers:
-            - name: watcher
-              image: "${local.cloud_controller_image}:${local.cloud_controller_version}"
-              imagePullPolicy: IfNotPresent
-              env:
-                - name: STACK_FQDN
-                  value: '${local.k8s_stack_fqdn}'
-                - name: PG_CONN_STR
-                  value: '${local.pg_conn_str}'
-                - name: EXCLUDE_TLS_NAMESPACES
-                  value: '${join(",", concat(local.default_exclude_tls_namespaces, var.exclude_tls_namespaces))}'
-      %{ if var.harbor_mirror_host != null && local.harbor_mirror_auth != null }
-                - name: HARBOR_MIRROR_HOST
-                  value: '${var.harbor_mirror_host}'
-                # adm pod patch
-                - name: HARBOR_MIRROR_PULL_SECRET_NAME
-                  value: 'mirror-pull-secret'
-      %{ endif }
-              command: [ "ns-watcher" ]
-  YAML
-  )
+
+resource "kubernetes_deployment_v1" "ns_watcher" {
+  metadata {
+    name      = "pve-cloud-ns-watcher"
+    namespace = kubernetes_namespace.pve_cloud_controller.metadata[0].name
+    labels = {
+      "app.kubernetes.io/name"    = "pve-cloud-ns-watcher"
+      "app.kubernetes.io/version" = local.cloud_controller_version
+    }
+  }
+
+  spec {
+    replicas = 1
+
+    selector {
+      match_labels = {
+        "app.kubernetes.io/name" = "pve-cloud-ns-watcher"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          "app.kubernetes.io/name"    = "pve-cloud-ns-watcher"
+          "app.kubernetes.io/version" = local.cloud_controller_version
+        }
+      }
+
+      spec {
+        node_selector       = var.node_selector
+        priority_class_name = "system-cluster-critical"
+
+        dynamic "toleration" {
+          for_each = var.tolerations != null ? var.tolerations : []
+          content {
+            key      = lookup(toleration.value, "key", null)
+            operator = lookup(toleration.value, "operator", null)
+            value    = lookup(toleration.value, "value", null)
+            effect   = lookup(toleration.value, "effect", null)
+          }
+        }
+
+        container {
+          name              = "watcher"
+          image             = "${local.cloud_controller_image}:${local.cloud_controller_version}"
+          image_pull_policy = "IfNotPresent"
+          command           = ["ns-watcher"]
+
+          env {
+            name  = "STACK_FQDN"
+            value = local.k8s_stack_fqdn
+          }
+          env {
+            name  = "PG_CONN_STR"
+            value = local.pg_conn_str
+          }
+          env {
+            name  = "EXCLUDE_TLS_NAMESPACES"
+            value = join(",", concat(local.default_exclude_tls_namespaces, var.exclude_tls_namespaces))
+          }
+
+          dynamic "env" {
+            for_each = local.harbor_mirror_enabled ? [1] : []
+            content {
+              name  = "HARBOR_MIRROR_PULL_SECRET_NAME"
+              value = "mirror-pull-secret"
+            }
+          }
+
+          dynamic "env" {
+            for_each = local.harbor_mirror_enabled != null ? [1] : []
+            content {
+              name  = "HARBOR_MIRROR_HOST"
+              value = var.harbor_mirror_host
+            }
+          }
+
+        }
+      }
+    }
+  }
 }
 
+resource "kubernetes_deployment_v1" "pod_watcher" {
+  metadata {
+    name      = "pve-cloud-pod-watcher"
+    namespace = kubernetes_namespace.pve_cloud_controller.metadata[0].name
+    labels = {
+      "app.kubernetes.io/name"    = "pve-cloud-pod-watcher"
+      "app.kubernetes.io/version" = local.cloud_controller_version
+    }
+  }
 
-resource "kubernetes_manifest" "pod_watcher" {
-  # comment in on release
-  count = var.harbor_mirror_host != null && local.harbor_admin_auth != null ? 1 : 0
-  manifest = yamldecode(<<-YAML
-    apiVersion: apps/v1
-    kind: Deployment
-    metadata:
-      name: pve-cloud-pod-watcher
-      namespace: ${kubernetes_namespace.pve_cloud_controller.metadata[0].name}
-      labels:
-        app.kubernetes.io/name: pve-cloud-pod-watcher
-        app.kubernetes.io/version: '${local.cloud_controller_version}'
-    spec:
-      replicas: 1
-      selector:
-        matchLabels:
-          app.kubernetes.io/name: pve-cloud-pod-watcher
-      template:
-        metadata:
-          labels:
-            app.kubernetes.io/name: pve-cloud-pod-watcher
-            app.kubernetes.io/version: '${local.cloud_controller_version}'
-        spec:
-    %{ if var.node_selector != null }
-          nodeSelector:
-            ${indent(8, yamlencode(var.node_selector))}
-    %{ endif }
-    %{ if var.tolerations != null }
-          tolerations:
-            ${indent(8, yamlencode(var.tolerations))}
-    %{ endif }
-          containers:
-            - name: watcher
-              image: "${local.cloud_controller_image}:${local.cloud_controller_version}"
-              imagePullPolicy: IfNotPresent
-              env:
-                - name: EXCLUDE_MIRROR_NAMESPACES
-                  value: '${join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))}'
-                - name: HARBOR_ADMIN_USER
-                  value: '${local.harbor_admin_auth.full_name}'
-                - name: HARBOR_ADMIN_PASSWORD
-                  value:  '${local.harbor_admin_auth.secret}'
-                - name: HARBOR_MIRROR_HOST
-                  value: '${var.harbor_mirror_host}'
-              command: [ "pod-watcher" ]
-  YAML
-  )
+  spec {
+    # pod watcher should only be deployed if a harbor for mirroring is configured
+    replicas = local.harbor_mirror_enabled ? 1 : 0
+
+    selector {
+      match_labels = {
+        "app.kubernetes.io/name" = "pve-cloud-pod-watcher"
+      }
+    }
+
+    template {
+      metadata {
+        labels = {
+          "app.kubernetes.io/name"    = "pve-cloud-pod-watcher"
+          "app.kubernetes.io/version" = local.cloud_controller_version
+        }
+      }
+
+      spec {
+        node_selector = var.node_selector
+
+        dynamic "toleration" {
+          for_each = var.tolerations != null ? var.tolerations : []
+          content {
+            key      = lookup(toleration.value, "key", null)
+            operator = lookup(toleration.value, "operator", null)
+            value    = lookup(toleration.value, "value", null)
+            effect   = lookup(toleration.value, "effect", null)
+          }
+        }
+
+        container {
+          name              = "watcher"
+          image             = "${local.cloud_controller_image}:${local.cloud_controller_version}"
+          image_pull_policy = "IfNotPresent"
+          command           = ["pod-watcher"]
+
+          env {
+            name  = "EXCLUDE_MIRROR_NAMESPACES"
+            value = join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))
+          }
+
+          # harbor mirror vars
+          dynamic "env" {
+            for_each = local.harbor_mirror_enabled ? [1] : []
+            content {
+              name  = "HARBOR_ADMIN_USER"
+              value = local.harbor_admin_auth.full_name
+            }
+          }
+
+          dynamic "env" {
+            for_each = local.harbor_mirror_enabled ? [1] : []
+            content {
+              name  = "HARBOR_ADMIN_PASSWORD"
+              value = local.harbor_admin_auth.secret
+            }
+          }
+
+          dynamic "env" {
+            for_each = local.harbor_mirror_enabled ? [1] : []
+            content {
+              name  = "HARBOR_MIRROR_HOST"
+              value = var.harbor_mirror_host
+            }
+          }
+
+        }
+      }
+    }
+  }
 }
 
 
@@ -192,6 +257,8 @@ data "pxc_cloud_secret" "mc_discovery" {
 
 locals {
   mc_parsed = data.pxc_cloud_secret.mc_discovery.secret_data != "" ? jsondecode(data.pxc_cloud_secret.mc_discovery.secret_data) : null
+  mc_publish_enabled = local.mc_parsed != null && length(local.mc_parsed.peers) > 0 && var.external_forwarded_ip != null
+  route53_ingress_dns = var.route53_access_key_id != null && var.route53_secret_access_key != null && var.external_forwarded_ip != null
 }
 
 resource "kubernetes_deployment_v1" "adm_deployment" {
@@ -321,7 +388,7 @@ resource "kubernetes_deployment_v1" "adm_deployment" {
 
           # harbor mirror vars
           dynamic "env" {
-            for_each = var.harbor_mirror_host != null && local.harbor_mirror_auth != null ? [1] : []
+            for_each = local.harbor_mirror_enabled ? [1] : []
             content {
               name  = "HARBOR_MIRROR_HOST"
               value = var.harbor_mirror_host
@@ -329,21 +396,23 @@ resource "kubernetes_deployment_v1" "adm_deployment" {
           }
 
           dynamic "env" {
-            for_each = var.harbor_mirror_host != null && local.harbor_mirror_auth != null ? [1] : []
+            for_each = local.harbor_mirror_enabled ? [1] : []
             content {
               name  = "HARBOR_MIRROR_PULL_SECRET_NAME"
               value = "mirror-pull-secret"
             }
           }
+
           dynamic "env" {
-            for_each = var.harbor_mirror_host != null && local.harbor_mirror_auth != null ? [1] : []
+            for_each = local.harbor_mirror_enabled ? [1] : []
             content {
               name  = "HARBOR_MIRROR_USER"
               value = local.harbor_mirror_auth.full_name
             }
           }
+
           dynamic "env" {
-            for_each = var.harbor_mirror_host != null && local.harbor_mirror_auth != null ? [1] : []
+            for_each = local.harbor_mirror_enabled ? [1] : []
             content {
               name  = "HARBOR_MIRROR_PASSWORD"
               value = local.harbor_mirror_auth.secret
@@ -352,21 +421,21 @@ resource "kubernetes_deployment_v1" "adm_deployment" {
 
           # route53
           dynamic "env" {
-            for_each = var.route53_access_key_id != null && var.route53_secret_access_key != null && var.external_forwarded_ip != null ? [1] : []
+            for_each = local.route53_ingress_dns ? [1] : []
             content {
               name  = "ROUTE53_REGION"
               value = var.route53_region
             }
           }
           dynamic "env" {
-            for_each = var.route53_access_key_id != null && var.route53_secret_access_key != null && var.external_forwarded_ip != null ? [1] : []
+            for_each = local.route53_ingress_dns != null ? [1] : []
             content {
               name  = "ROUTE53_ACCESS_KEY_ID"
               value = var.route53_access_key_id
             }
           }
           dynamic "env" {
-            for_each = var.route53_access_key_id != null && var.route53_secret_access_key != null && var.external_forwarded_ip != null ? [1] : []
+            for_each = local.route53_ingress_dns != null ? [1] : []
             content {
               name  = "ROUTE53_SECRET_ACCESS_KEY"
               value = var.route53_secret_access_key
@@ -393,14 +462,14 @@ resource "kubernetes_deployment_v1" "adm_deployment" {
 
           # mc config
           dynamic "env" {
-            for_each = local.mc_parsed != null && length(local.mc_parsed.peers) > 0 && var.external_forwarded_ip != null ? [1] : []
+            for_each = local.mc_publish_enabled ? [1] : []
             content {
               name  = "MC_TOKEN"
               value = local.mc_parsed.token
             }
           }
           dynamic "env" {
-            for_each = local.mc_parsed != null && length(local.mc_parsed.peers) > 0 && var.external_forwarded_ip != null ? [1] : []
+            for_each = local.mc_publish_enabled ? [1] : []
             content {
               name  = "MC_PEER_ENDPOINTS"
               value = join(",", local.mc_parsed.peers)
@@ -412,25 +481,27 @@ resource "kubernetes_deployment_v1" "adm_deployment" {
   }
 }
 
-resource "kubernetes_manifest" "adm_service" {
-  manifest = yamldecode(<<-YAML
-    apiVersion: v1
-    kind: Service
-    metadata:
-      name: pve-cloud-adm
-      namespace: ${kubernetes_namespace.pve_cloud_controller.metadata[0].name}
-    spec:
-      type: ClusterIP
-      ports:
-        - port: 443
-          targetPort: https
-          protocol: TCP
-          name: https
-      selector:
-          app.kubernetes.io/name: pve-cloud-adm
 
-  YAML
-  )
+resource "kubernetes_service_v1" "adm_service" {
+  metadata {
+    name      = "pve-cloud-adm"
+    namespace = kubernetes_namespace.pve_cloud_controller.metadata[0].name
+  }
+
+  spec {
+    type = "ClusterIP"
+
+    port {
+      name        = "https"
+      port        = 443
+      target_port = "https"
+      protocol    = "TCP"
+    }
+
+    selector = {
+      "app.kubernetes.io/name" = "pve-cloud-adm"
+    }
+  }
 }
 
 resource "kubernetes_mutating_webhook_configuration" "adm_hook" {
@@ -527,176 +598,318 @@ resource "kubernetes_mutating_webhook_configuration" "adm_hook" {
 }
 
 
-resource "kubernetes_manifest" "cron" {
-  manifest = yamldecode(<<-YAML
-    apiVersion: batch/v1
-    kind: CronJob
-    metadata:
-      name: pve-cloud-cron
-      namespace: ${kubernetes_namespace.pve_cloud_controller.metadata[0].name}
-      labels:
-        app.kubernetes.io/name: pve-cloud-cron
-        app.kubernetes.io/version: '${local.cloud_controller_version}'
-    spec:
-      schedule: "0 0 * * *"  # once every night
-      jobTemplate:
-        spec:
-          backoffLimit: 0
-          template:
-            metadata:
-              labels:
-                app.kubernetes.io/name: pve-cloud-cron
-                app.kubernetes.io/version: '${local.cloud_controller_version}'
-            spec:
-    %{ if var.node_selector != null }
-              nodeSelector:
-                ${indent(12, yamlencode(var.node_selector))}
-    %{ endif }
-    %{ if var.tolerations != null }
-              tolerations:
-                ${indent(12, yamlencode(var.tolerations))}
-    %{ endif }
-              restartPolicy: Never
-              volumes:
-                - name: cluster-conf
-                  configMap:
-                    name: cluster-conf
-              containers:
-                - name: cron
-                  image: "${local.cloud_controller_image}:${local.cloud_controller_version}"
-                  imagePullPolicy: IfNotPresent
-                  volumeMounts:
-                    - name: cluster-conf
-                      mountPath: "/etc/controller-conf"
-                      raedOnly: true
-                  env:
-                    - name: STACK_FQDN
-                      value: '${local.k8s_stack_fqdn}'
-                    - name: PG_CONN_STR
-                      value: '${local.pg_conn_str}'
-      %{ if var.harbor_mirror_host != null && local.harbor_mirror_auth != null }
-                    - name: HARBOR_MIRROR_HOST
-                      value: '${var.harbor_mirror_host}'
-                    - name: HARBOR_MIRROR_PULL_SECRET_NAME
-                      value: 'mirror-pull-secret'
-      %{ endif }
-                    - name: BIND_MASTER_IP
-                      value: '${local.cluster_vars.bind_master_ip}'
-                    - name: BIND_DNS_UPDATE_KEY
-                      value: '${local.bind_dns_update_key}'
-                    - name: INTERNAL_PROXY_FIP
-                      value: '${local.cluster_vars.pve_haproxy_floating_ip_internal}' 
-      %{ if var.route53_access_key_id != null && var.route53_secret_access_key != null && var.external_forwarded_ip != null }
-                    - name: ROUTE53_REGION
-                      value: '${var.route53_region}'
-                    - name: ROUTE53_ACCESS_KEY_ID
-                      value: '${var.route53_access_key_id}'
-                    - name: ROUTE53_SECRET_ACCESS_KEY
-                      value: '${var.route53_secret_access_key}'
-                    - name: EXTERNAL_FORWARDED_IP
-                      value: '${var.external_forwarded_ip}'     
-      %{ endif }
-      %{ if var.route53_endpoint_url != null }
-                    - name: ROUTE53_ENDPOINT_URL
-                      value: '${var.route53_endpoint_url}'
-      %{ endif }
-                    - name: EXCLUDE_MIRROR_NAMESPACES
-                      value: '${join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))}'
-                    - name: EXCLUDE_TLS_NAMESPACES
-                      value: '${join(",", concat(local.default_exclude_tls_namespaces, var.exclude_tls_namespaces))}'
-                  command: [ "cron" ]
 
-  YAML
-  )
-}
-
-# currently only needed to create cluster-tls in cloud controller ns initially
-resource "kubernetes_manifest" "init_job" {
-  # todo: this might not be optimal
-  lifecycle {
-    ignore_changes = [ manifest ]
+resource "kubernetes_cron_job_v1" "cron" {
+  metadata {
+    name      = "pve-cloud-cron"
+    namespace = kubernetes_namespace.pve_cloud_controller.metadata[0].name
+    labels = {
+      "app.kubernetes.io/name"    = "pve-cloud-cron"
+      "app.kubernetes.io/version" = local.cloud_controller_version
+    }
   }
 
-  manifest = yamldecode(<<-YAML
-    apiVersion: batch/v1
-    kind: Job
-    metadata:
-      name: pve-cloud-init
-      namespace: ${kubernetes_namespace.pve_cloud_controller.metadata[0].name}
-      labels:
-        app.kubernetes.io/name: pve-cloud-init
-        app.kubernetes.io/version: '${local.cloud_controller_version}'
-    spec:
-      backoffLimit: 0
-      template:
-        metadata:
-          labels:
-            app.kubernetes.io/name: pve-cloud-init
-            app.kubernetes.io/version: '${local.cloud_controller_version}'
-        spec:
-    %{ if var.node_selector != null }
-          nodeSelector:
-            ${indent(8, yamlencode(var.node_selector))}
-    %{ endif }
-    %{ if var.tolerations != null }
-          tolerations:
-            ${indent(8, yamlencode(var.tolerations))}
-    %{ endif }
-          restartPolicy: Never
-          volumes:
-            - name: cluster-conf
-              configMap:
-                name: cluster-conf
-          containers:
-            - name: init
-              image: "${local.cloud_controller_image}:${local.cloud_controller_version}"
-              imagePullPolicy: IfNotPresent
-              volumeMounts:
-                - name: cluster-conf
-                  mountPath: "/etc/controller-conf"
-                  raedOnly: true
-              env:
-                - name: STACK_FQDN
-                  value: '${local.k8s_stack_fqdn}'
-                - name: PG_CONN_STR
-                  value: '${local.pg_conn_str}'
-      %{ if var.harbor_mirror_host != null && local.harbor_mirror_auth != null }
-                - name: HARBOR_MIRROR_HOST
-                  value: '${var.harbor_mirror_host}'
-                - name: HARBOR_MIRROR_PULL_SECRET_NAME
-                  value: 'mirror-pull-secret'
-      %{ endif }
-                - name: BIND_MASTER_IP
-                  value: '${local.cluster_vars.bind_master_ip}'
-                - name: BIND_DNS_UPDATE_KEY
-                  value: '${local.bind_dns_update_key}'
-                - name: INTERNAL_PROXY_FIP
-                  value: '${local.cluster_vars.pve_haproxy_floating_ip_internal}' 
-      %{ if var.route53_access_key_id != null && var.route53_secret_access_key != null && var.external_forwarded_ip != null }
-                - name: ROUTE53_REGION
-                  value: '${var.route53_region}'
-                - name: ROUTE53_ACCESS_KEY_ID
-                  value: '${var.route53_access_key_id}'
-                - name: ROUTE53_SECRET_ACCESS_KEY
-                  value: '${var.route53_secret_access_key}'
-                - name: EXTERNAL_FORWARDED_IP
-                  value: '${var.external_forwarded_ip}'     
-      %{ endif }
-      %{ if var.route53_endpoint_url != null }
-                - name: ROUTE53_ENDPOINT_URL
-                  value: '${var.route53_endpoint_url}'
-      %{ endif }
-                - name: EXCLUDE_MIRROR_NAMESPACES
-                  value: '${join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))}'
-                - name: EXCLUDE_TLS_NAMESPACES
-                  value: '${join(",", concat(local.default_exclude_tls_namespaces, var.exclude_tls_namespaces))}'
-              command: [ "cron" ]
+  spec {
+    schedule = "0 0 * * *" # once every night
 
-  YAML
-  )
+    job_template {
+      metadata {}
+      
+      spec {
+        backoff_limit = 0
 
-  # fix provider error
-  # todo: this is also a hack
-  computed_fields = ["spec.template.metadata.labels"]
-  
+        template {
+          metadata {
+            labels = {
+              "app.kubernetes.io/name"    = "pve-cloud-cron"
+              "app.kubernetes.io/version" = local.cloud_controller_version
+            }
+          }
+
+          spec {
+            restart_policy = "Never"
+            node_selector       = var.node_selector
+
+            dynamic "toleration" {
+              for_each = var.tolerations != null ? var.tolerations : []
+              content {
+                key                = lookup(toleration.value, "key", null)
+                operator           = lookup(toleration.value, "operator", null)
+                value              = lookup(toleration.value, "value", null)
+                effect             = lookup(toleration.value, "effect", null)
+              }
+            }
+            volume {
+              name = "cluster-conf"
+              config_map {
+                name = "cluster-conf"
+              }
+            }
+
+            container {
+              name              = "cron"
+              image             = "${local.cloud_controller_image}:${local.cloud_controller_version}"
+              image_pull_policy = "IfNotPresent"
+              command           = ["cron"]
+
+              volume_mount {
+                name = "cluster-conf"
+                mount_path = "/etc/controller-conf"
+                read_only = true
+              }
+
+              env {
+                name  = "STACK_FQDN"
+                value = local.k8s_stack_fqdn
+              }
+              env {
+                name  = "PG_CONN_STR"
+                value = local.pg_conn_str
+              }
+
+              # harbor mirror vars
+              dynamic "env" {
+                for_each = local.harbor_mirror_enabled ? [1] : []
+                content {
+                  name  = "HARBOR_MIRROR_HOST"
+                  value = var.harbor_mirror_host
+                }
+              }
+
+              dynamic "env" {
+                for_each = local.harbor_mirror_enabled ? [1] : []
+                content {
+                  name  = "HARBOR_MIRROR_PULL_SECRET_NAME"
+                  value = "mirror-pull-secret"
+                }
+              }
+
+              env {
+                name  = "BIND_MASTER_IP"
+                value = local.cluster_vars.bind_master_ip
+              }
+
+              env {
+                name  = "BIND_DNS_UPDATE_KEY"
+                value = local.bind_dns_update_key
+              }
+
+              env {
+                name  = "INTERNAL_PROXY_FIP"
+                value = local.cluster_vars.pve_haproxy_floating_ip_internal
+              }
+
+              dynamic "env" {
+                for_each = local.route53_ingress_dns ? [1] : []
+                content {
+                  name  = "ROUTE53_REGION"
+                  value = var.route53_region
+                }
+              }
+
+              dynamic "env" {
+                for_each = local.route53_ingress_dns ? [1] : []
+                content {
+                  name  = "ROUTE53_ACCESS_KEY_ID"
+                  value = var.route53_access_key_id
+                }
+              }
+
+              dynamic "env" {
+                for_each = local.route53_ingress_dns ? [1] : []
+                content {
+                  name  = "ROUTE53_SECRET_ACCESS_KEY"
+                  value = var.route53_secret_access_key
+                }
+              }
+
+              dynamic "env" {
+                for_each = var.external_forwarded_ip != null ? [1] : []
+                content {
+                  name  = "EXTERNAL_FORWARDED_IP"
+                  value = var.external_forwarded_ip
+                }
+              }
+
+              dynamic "env" {
+                for_each = var.route53_endpoint_url != null ? [1] : []
+                content {
+                  name  = "ROUTE53_ENDPOINT_URL"
+                  value = var.route53_endpoint_url
+                }
+              }
+
+              env {
+                name  = "EXCLUDE_MIRROR_NAMESPACES"
+                value = join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))
+              }
+
+              env {
+                name  = "EXCLUDE_TLS_NAMESPACES"
+                value = join(",", concat(local.default_exclude_tls_namespaces, var.exclude_tls_namespaces))
+              }
+              env {
+                name  = "LOG_LEVEL"
+                value = var.log_level
+              }
+
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+
+resource "kubernetes_job_v1" "init_job" {
+  # tf sucking balls yet again
+  lifecycle {
+    ignore_changes = [
+      spec[0].selector,
+    ]
+  }
+
+  metadata {
+    name      = "pve-cloud-init"
+    namespace = kubernetes_namespace.pve_cloud_controller.metadata[0].name
+    labels = {
+      "app.kubernetes.io/name"    = "pve-cloud-init"
+      "app.kubernetes.io/version" = local.cloud_controller_version
+    }
+  }
+
+  spec {
+    backoff_limit = 0
+
+    template {
+      metadata {
+        labels = {
+          "app.kubernetes.io/name"    = "pve-cloud-init"
+          "app.kubernetes.io/version" = local.cloud_controller_version
+        }
+      }
+
+      spec {
+        node_selector  = var.node_selector
+        restart_policy = "Never"
+
+        dynamic "toleration" {
+          for_each = var.tolerations != null ? var.tolerations : []
+          content {
+            key      = lookup(toleration.value, "key", null)
+            operator = lookup(toleration.value, "operator", null)
+            value    = lookup(toleration.value, "value", null)
+            effect   = lookup(toleration.value, "effect", null)
+          }
+        }
+
+        volume {
+          name = "cluster-conf"
+          config_map {
+            name = "cluster-conf"
+          }
+        }
+
+        container {
+          name              = "init"
+          image             = "${local.cloud_controller_image}:${local.cloud_controller_version}"
+          image_pull_policy = "IfNotPresent"
+          command           = ["cron"]
+
+          volume_mount {
+            name       = "cluster-conf"
+            mount_path = "/etc/controller-conf"
+            read_only  = true
+          }
+
+          env {
+            name  = "STACK_FQDN"
+            value = local.k8s_stack_fqdn
+          }
+          env {
+            name  = "PG_CONN_STR"
+            value = local.pg_conn_str
+          }
+
+          dynamic "env" {
+            for_each = local.harbor_mirror_enabled ? [1] : []
+            content {
+              name  = "HARBOR_MIRROR_HOST"
+              value = var.harbor_mirror_host
+            }
+          }
+          dynamic "env" {
+            for_each = local.harbor_mirror_enabled ? [1] : []
+            content {
+              name  = "HARBOR_MIRROR_PULL_SECRET_NAME"
+              value = "mirror-pull-secret"
+            }
+          }
+
+          env {
+            name  = "BIND_MASTER_IP"
+            value = local.cluster_vars.bind_master_ip
+          }
+          env {
+            name  = "BIND_DNS_UPDATE_KEY"
+            value = local.bind_dns_update_key
+          }
+          env {
+            name  = "INTERNAL_PROXY_FIP"
+            value = local.cluster_vars.pve_haproxy_floating_ip_internal
+          }
+
+          dynamic "env" {
+            for_each = local.route53_ingress_dns ? [1] : []
+            content {
+              name  = "ROUTE53_REGION"
+              value = var.route53_region
+            }
+          }
+
+          dynamic "env" {
+            for_each = local.route53_ingress_dns ? [1] : []
+            content {
+              name  = "ROUTE53_ACCESS_KEY_ID"
+              value = var.route53_access_key_id
+            }
+          }
+
+          dynamic "env" {
+            for_each = local.route53_ingress_dns ? [1] : []
+            content {
+              name  = "ROUTE53_SECRET_ACCESS_KEY"
+              value = var.route53_secret_access_key
+            }
+          }
+          
+          dynamic "env" {
+            for_each = var.external_forwarded_ip != null ? [1] : []
+            content {
+              name  = "EXTERNAL_FORWARDED_IP"
+              value = var.external_forwarded_ip
+            }
+          }
+
+          dynamic "env" {
+            for_each = var.route53_endpoint_url != null ? [1] : []
+            content {
+              name  = "ROUTE53_ENDPOINT_URL"
+              value = var.route53_endpoint_url
+            }
+          }
+
+          env {
+            name  = "EXCLUDE_MIRROR_NAMESPACES"
+            value = join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))
+          }
+          env {
+            name  = "EXCLUDE_TLS_NAMESPACES"
+            value = join(",", concat(local.default_exclude_tls_namespaces, var.exclude_tls_namespaces))
+          }
+        }
+      }
+    }
+  }
 }

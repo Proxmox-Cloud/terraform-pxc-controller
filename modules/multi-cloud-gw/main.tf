@@ -33,6 +33,20 @@ resource "pxc_cloud_secret" "mc_discovery" {
   })
 }
 
+# generate secrets for external kubernetes clusters that integrate with this specific cloud, from non pxc instances.
+resource "random_password" "external_mc_token" {
+  length           = 32
+  special          = true
+}
+
+resource "pxc_cloud_secret" "external_mc_token" {
+  secret_name = "external-mc-token"
+  secret_data = jsonencode({
+    token = random_password.external_mc_token.result
+    mc_gw_host = var.multi_cloud_gateway_host
+  })
+}
+
 # need to use kubernetes_deployment_v1 here since kubernetes_manifest is a buggy pos
 # todo: refactor all kubernetes_manifest resources where possible
 # use dynamic blocks for imiating logic
@@ -134,6 +148,10 @@ resource "kubernetes_deployment_v1" "mc_gw_deployment" {
           env {
             name  = "MC_TOKEN"
             value = var.multi_cloud_token
+          }
+          env {
+            name = "EXTERNAL_MC_TOKEN"
+            value = random_password.external_mc_token.result
           }
           env {
             name = "PVE_CLOUD_DOMAIN"

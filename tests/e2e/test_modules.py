@@ -19,7 +19,7 @@ from kubernetes.stream import stream
 from pve_cloud_test.cloud_fixtures import *
 from pve_cloud_test.k8s_fixtures import *
 from pytest_httpserver import HTTPServer
-from scenarios import *
+from fixtures import *
 
 logger = logging.getLogger(__name__)
 
@@ -154,7 +154,7 @@ def test_delete_ingress(
     get_primary_kubeconfig,
     controller_scenario,
     get_moto_client,
-    set_pve_cloud_auth,
+    get_cloud_secrets,
 ):
     kubeconfig = get_primary_kubeconfig
 
@@ -201,7 +201,7 @@ def test_delete_ingress(
     api.delete_namespaced_ingress(name="test-delete-ingress", namespace="default")
 
     # validate its gone in bind dns and moto
-    bind_internal_key = set_pve_cloud_auth["bind_internal_key"]
+    bind_internal_key = get_cloud_secrets["bind_internal_key"]
 
     # assert deleted from bind
     zone = dns.zone.from_xfr(
@@ -257,7 +257,7 @@ def test_update_ingress(
     get_primary_kubeconfig,
     controller_scenario,
     get_moto_client,
-    set_pve_cloud_auth,
+    get_cloud_secrets,
 ):
     kubeconfig = get_primary_kubeconfig
 
@@ -319,7 +319,7 @@ def test_update_ingress(
     )
 
     # validate new record was created and old deleted
-    bind_internal_key = set_pve_cloud_auth["bind_internal_key"]
+    bind_internal_key = get_cloud_secrets["bind_internal_key"]
 
     # assert deleted from bind
     zone = dns.zone.from_xfr(
@@ -484,9 +484,9 @@ def test_ingress_cluster_cert_block(
     api.delete_namespaced_ingress(name="test-allow-ingress", namespace="default")
 
 
-def test_ingress_dns(get_test_env, set_pve_cloud_auth, deployments_scenario):
+def test_ingress_dns(get_test_env, get_cloud_secrets, deployments_scenario):
     logger.info("test ingress dns bind record creation")
-    bind_internal_key = set_pve_cloud_auth["bind_internal_key"]
+    bind_internal_key = get_cloud_secrets["bind_internal_key"]
     random_nginx_test_name = deployments_scenario["random_nginx_test_name"]
 
     # test ingress dns admission controller, if records were made for test-nginx helm deployment
@@ -595,11 +595,11 @@ def test_external_ingress_dns(
 
 
 def test_delete_namespace_ingress_hook(
-    get_test_env, get_k8s_api_v1, deployments_scenario, set_pve_cloud_auth
+    get_test_env, get_k8s_api_v1, deployments_scenario, get_cloud_secrets
 ):
     v1 = get_k8s_api_v1
     # first we assert the internal hostname that it was created
-    bind_internal_key = set_pve_cloud_auth["bind_internal_key"]
+    bind_internal_key = get_cloud_secrets["bind_internal_key"]
 
     zone = dns.zone.from_xfr(
         dns.query.xfr(
@@ -739,7 +739,7 @@ def test_secondary_logging(get_test_env, secondary_scenario, get_k8s_secondary_a
     logger.info("secondary logging")
 
 
-def test_mc_gw_ingress_update(get_test_env, controller_scenario, set_pve_cloud_auth):
+def test_mc_gw_ingress_update(get_test_env, controller_scenario, get_cloud_secrets):
     logger.info("send test ingress update body to mc gw")
 
     response = requests.post(
@@ -754,7 +754,7 @@ def test_mc_gw_ingress_update(get_test_env, controller_scenario, set_pve_cloud_a
 
     assert response.status_code == 200
 
-    bind_internal_key = set_pve_cloud_auth["bind_internal_key"]
+    bind_internal_key = get_cloud_secrets["bind_internal_key"]
 
     # check if the dns records were made through the mc endpoint
     zone = dns.zone.from_xfr(
@@ -783,7 +783,7 @@ def test_mc_gw_ingress_update(get_test_env, controller_scenario, set_pve_cloud_a
 
     assert response.status_code == 200
 
-    bind_internal_key = set_pve_cloud_auth["bind_internal_key"]
+    bind_internal_key = get_cloud_secrets["bind_internal_key"]
 
     # check if the dns records were made through the mc gw endpoint
     zone = dns.zone.from_xfr(
@@ -800,7 +800,7 @@ def test_mc_gw_ingress_update(get_test_env, controller_scenario, set_pve_cloud_a
     assert "test-mc" not in [name.to_text() for name, _ in zone.nodes.items()]
 
 
-def test_mc_gw_acme_update(get_test_env, controller_scenario, set_pve_cloud_auth):
+def test_mc_gw_acme_update(get_test_env, controller_scenario):
     logger.info("mock test acme update flow")
 
     response = requests.get(
@@ -812,7 +812,7 @@ def test_mc_gw_acme_update(get_test_env, controller_scenario, set_pve_cloud_auth
     assert response.status_code == 200
 
 
-def test_mc_gw_get_acme_acc(get_test_env, controller_scenario, set_pve_cloud_auth):
+def test_mc_gw_get_acme_acc(get_test_env, controller_scenario):
     logger.info("mock test get acme account")
 
     response = requests.get(
@@ -822,7 +822,7 @@ def test_mc_gw_get_acme_acc(get_test_env, controller_scenario, set_pve_cloud_aut
     logger.info(response.text)
 
 
-def test_mc_gw_get_alertmanagers(get_test_env, controller_scenario, set_pve_cloud_auth):
+def test_mc_gw_get_alertmanagers(get_test_env, controller_scenario):
     logger.info("mock test get alertmanager")
 
     response = requests.get(
@@ -834,7 +834,7 @@ def test_mc_gw_get_alertmanagers(get_test_env, controller_scenario, set_pve_clou
     assert response.status_code == 200
 
 
-def test_mc_gw_get_vclients(get_test_env, controller_scenario, set_pve_cloud_auth):
+def test_mc_gw_get_vclients(get_test_env, controller_scenario):
     logger.info("mock test get victoria logs clients")
 
     response = requests.get(
@@ -844,3 +844,7 @@ def test_mc_gw_get_vclients(get_test_env, controller_scenario, set_pve_cloud_aut
     logger.info(response.text)
 
     assert response.status_code == 200
+
+
+def test_external_acme_tls(get_test_env, secondary_scenario):
+    logger.info("external acme inject test")
