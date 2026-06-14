@@ -7,11 +7,13 @@ import time
 import boto3
 import dns.resolver
 import pytest
-from pve_cloud_test.cloud_fixtures import get_tdd_version, cloud_fixture, get_test_env, get_proxmoxer
-from pve_cloud_test.k8s_fixtures import get_k8s_api_v1, get_k8s_secondary_api_v1, get_kubespray_inv, get_secondary_kubespray_inv
-
+from pve_cloud_test.cloud_fixtures import (cloud_fixture, get_proxmoxer,
+                                           get_tdd_version, get_test_env)
+from pve_cloud_test.k8s_fixtures import (get_k8s_api_v1,
+                                         get_k8s_secondary_api_v1,
+                                         get_kubespray_inv,
+                                         get_secondary_kubespray_inv)
 from pve_cloud_test.terraform import apply, destroy, get_mc_gw_http_mock
-
 
 logger = logging.getLogger(__name__)
 
@@ -80,7 +82,6 @@ def init_moto(proxmox, get_test_env):
     return client
 
 
-
 @pytest.fixture(scope="session")
 def get_moto_client(get_test_env, get_proxmoxer, controller_scenario):
     proxmox = get_proxmoxer
@@ -146,15 +147,28 @@ def controller_scenario(
         extra_apply_env["TF_VAR_cloud_controller_version"] = ctlr_vers
 
     apply(
-        "pxc-controller", scenario_name, get_k8s_api_v1, get_test_env, get_kubespray_inv, extra_apply_env
-    ) 
+        "pxc-controller",
+        scenario_name,
+        get_k8s_api_v1,
+        get_test_env,
+        get_kubespray_inv,
+        extra_apply_env,
+    )
 
     # init aws moto mock server
     init_moto(get_proxmoxer, get_test_env)
 
     yield
 
-    destroy("pxc-controller", scenario_name, get_k8s_api_v1, get_test_env, get_kubespray_inv, extra_apply_env)
+    destroy(
+        "pxc-controller",
+        scenario_name,
+        get_k8s_api_v1,
+        get_test_env,
+        get_kubespray_inv,
+        extra_apply_env,
+    )
+
 
 @pytest.fixture(scope="session")
 def set_tf_nginx_rndm_hostname():
@@ -169,37 +183,65 @@ def set_tf_nginx_rndm_hostname():
 
 
 @cloud_fixture("deployments")
-def deployments_scenario(request, controller_scenario, get_test_env, get_kubespray_inv, get_k8s_api_v1, set_tf_nginx_rndm_hostname):
+def deployments_scenario(
+    request,
+    controller_scenario,
+    get_test_env,
+    get_kubespray_inv,
+    get_k8s_api_v1,
+    set_tf_nginx_rndm_hostname,
+):
     scenario_name = "deployments"
 
     # multi cloud gateway peer sim
     with get_mc_gw_http_mock():
         # main apply
-        apply("pxc-controller", scenario_name, get_k8s_api_v1, get_test_env, get_kubespray_inv, {"TF_VAR_nginx_rnd_hostname": set_tf_nginx_rndm_hostname})
+        apply(
+            "pxc-controller",
+            scenario_name,
+            get_k8s_api_v1,
+            get_test_env,
+            get_kubespray_inv,
+            {"TF_VAR_nginx_rnd_hostname": set_tf_nginx_rndm_hostname},
+        )
 
     time.sleep(10)  # ingress dns time
 
     yield {"random_nginx_test_name": set_tf_nginx_rndm_hostname}
-    
-    with get_mc_gw_http_mock():
-        destroy("pxc-controller", scenario_name, get_k8s_api_v1, get_test_env, get_kubespray_inv, {"TF_VAR_nginx_rnd_hostname": set_tf_nginx_rndm_hostname})
 
+    with get_mc_gw_http_mock():
+        destroy(
+            "pxc-controller",
+            scenario_name,
+            get_k8s_api_v1,
+            get_test_env,
+            get_kubespray_inv,
+            {"TF_VAR_nginx_rnd_hostname": set_tf_nginx_rndm_hostname},
+        )
 
 
 @cloud_fixture("harbor")
-def harbor_scenario(request, controller_scenario, get_test_env, get_kubespray_inv, get_k8s_api_v1):
+def harbor_scenario(
+    request, controller_scenario, get_test_env, get_kubespray_inv, get_k8s_api_v1
+):
     scenario_name = "harbor"
 
-    apply("pxc-controller", scenario_name, get_k8s_api_v1, get_test_env, get_kubespray_inv)
+    apply(
+        "pxc-controller", scenario_name, get_k8s_api_v1, get_test_env, get_kubespray_inv
+    )
 
     # we also need to reapply the controller scenario as the controller module gets
     # secrets by discovery that are set during the harbor scenario
     # todo: only do once with redis key check
-    apply("pxc-controller", "controller", get_k8s_api_v1, get_test_env, get_kubespray_inv)
+    apply(
+        "pxc-controller", "controller", get_k8s_api_v1, get_test_env, get_kubespray_inv
+    )
 
     yield
 
-    destroy("pxc-controller", scenario_name, get_k8s_api_v1, get_test_env, get_kubespray_inv)
+    destroy(
+        "pxc-controller", scenario_name, get_k8s_api_v1, get_test_env, get_kubespray_inv
+    )
 
 
 @cloud_fixture("secondary")
@@ -211,7 +253,7 @@ def secondary_scenario(
     get_kubespray_inv,
     get_k8s_secondary_api_v1,
     get_secondary_kubespray_inv,
-    set_tf_nginx_rndm_hostname
+    set_tf_nginx_rndm_hostname,
 ):
     scenario_name = "secondary"
 
@@ -231,15 +273,35 @@ def secondary_scenario(
     with get_mc_gw_http_mock():
         # main apply
         # os.environ["TF_VAR_e2e_secondary_kubespray_inv"] = temp_kubespray_inv.name
-        apply("pxc-controller", scenario_name, get_k8s_secondary_api_v1, get_test_env, get_secondary_kubespray_inv, extra_apply_env)
+        apply(
+            "pxc-controller",
+            scenario_name,
+            get_k8s_secondary_api_v1,
+            get_test_env,
+            get_secondary_kubespray_inv,
+            extra_apply_env,
+        )
 
         # after having registered our client we also need to run the deployments scenario again for the master monitoring to pick up on this
         # todo: this could be made faster by first checking if the secrets exist and only
         # applying when they were first created
-        apply("pxc-controller", "deployments", get_k8s_api_v1, get_test_env, get_kubespray_inv, {"TF_VAR_nginx_rnd_hostname": set_tf_nginx_rndm_hostname})
+        apply(
+            "pxc-controller",
+            "deployments",
+            get_k8s_api_v1,
+            get_test_env,
+            get_kubespray_inv,
+            {"TF_VAR_nginx_rnd_hostname": set_tf_nginx_rndm_hostname},
+        )
 
     yield
 
     with get_mc_gw_http_mock():
-        destroy("pxc-controller", scenario_name, get_k8s_secondary_api_v1, get_test_env, get_secondary_kubespray_inv, extra_apply_env)
-
+        destroy(
+            "pxc-controller",
+            scenario_name,
+            get_k8s_secondary_api_v1,
+            get_test_env,
+            get_secondary_kubespray_inv,
+            extra_apply_env,
+        )

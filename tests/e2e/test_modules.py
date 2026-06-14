@@ -12,6 +12,7 @@ import requests
 from cryptography import x509
 from cryptography.hazmat.backends import default_backend
 from cryptography.x509.oid import NameOID
+from fixtures import *
 from kubernetes import client, config
 from kubernetes.client import V1Job, V1JobSpec, V1ObjectMeta
 from kubernetes.client.rest import ApiException
@@ -19,7 +20,6 @@ from kubernetes.stream import stream
 from pve_cloud_test.cloud_fixtures import *
 from pve_cloud_test.k8s_fixtures import *
 from pytest_httpserver import HTTPServer
-from fixtures import *
 
 logger = logging.getLogger(__name__)
 
