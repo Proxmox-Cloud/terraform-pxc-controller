@@ -527,7 +527,7 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
             "KubeAPIErrorBudgetBurn",
             "haproxy all backends down",
             "Errors Critical",
-            "cpu temperature high"
+            "cpu temperature high",
         ]:
             logger.error(alert)
             critical_alerts.append(alert["labels"]["alertname"])
@@ -716,8 +716,9 @@ def test_harbor_mirror_superficial(get_test_env, harbor_scenario, get_k8s_api_v1
 
     # use external harbor mirror, else fallback to locally deployed
     assert first_container_image.startswith(
-        get_test_env["kubernetes"]["harbor_copy_mirror_host"] if "harbor_copy_mirror_host" in get_test_env["kubernetes"] else 
-            f"harbor.{get_test_env['kubernetes']['deployments_domain']}"
+        get_test_env["kubernetes"]["harbor_copy_mirror_host"]
+        if "harbor_copy_mirror_host" in get_test_env["kubernetes"]
+        else f"harbor.{get_test_env['kubernetes']['deployments_domain']}"
     )
 
     logger.info((f"Pod is running image: {first_container_image}"))

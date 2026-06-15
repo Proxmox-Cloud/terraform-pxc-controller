@@ -241,12 +241,17 @@ def harbor_scenario(
             f"{tdd_ip}:5000/pve-cloud-controller"
         )
         extra_apply_env["TF_VAR_cloud_controller_version"] = ctlr_vers
-        
+
     # we also need to reapply the controller scenario as the controller module gets
     # secrets by discovery that are set during the harbor scenario
     # todo: only do once with redis key check
     apply(
-        "pxc-controller", "controller", get_k8s_api_v1, get_test_env, get_kubespray_inv, extra_apply_env
+        "pxc-controller",
+        "controller",
+        get_k8s_api_v1,
+        get_test_env,
+        get_kubespray_inv,
+        extra_apply_env,
     )
 
     yield
