@@ -116,6 +116,13 @@ module "tf_monitoring" {
   ]
 }
 
+resource "time_sleep" "wait_for_monitoring" {
+  depends_on =  [ module.tf_monitoring ]
+
+  create_duration = "1m"
+}
+
+
 # expose karma directly
 resource "kubernetes_manifest" "karma_ingress" {
   depends_on = [ module.tf_monitoring ]

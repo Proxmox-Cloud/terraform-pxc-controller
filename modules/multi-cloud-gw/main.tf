@@ -36,7 +36,7 @@ resource "pxc_cloud_secret" "mc_discovery" {
 # generate secrets for external kubernetes clusters that integrate with this specific cloud, from non pxc instances.
 resource "random_password" "external_mc_token" {
   length           = 32
-  special          = true
+  special          = false
 }
 
 resource "pxc_cloud_secret" "external_mc_token" {

@@ -132,6 +132,7 @@ resource "pxc_cloud_secret" "cloud_mirror" {
       }
     CFG
   })
+  secret_type = "harbor-mirror-auth"
 }
 
 # generic cloud admin robot account
@@ -163,6 +164,7 @@ resource "pxc_cloud_secret" "cloud_admin" {
     full_name = harbor_robot_account.cloud_admin.full_name
     secret = harbor_robot_account.cloud_admin.secret
     auth_b64 = base64encode("${harbor_robot_account.cloud_admin.full_name}:${harbor_robot_account.cloud_admin.secret}")
+    harbor_host = var.harbor_host
     dockerconfig = <<-CFG
       {
               "auths": {
@@ -173,5 +175,11 @@ resource "pxc_cloud_secret" "cloud_admin" {
       }
     CFG
   })
+  secret_type = "harbor-admin-auth"
 }
 
+# helm mirror chart for mirroring via ansible and terraform pxc helm mirror resource
+resource "harbor_project" "cloud_helm_mirror" {
+  name        = "cloud-helm-mirror"
+  force_destroy = true
+}

@@ -1,3 +1,10 @@
+locals {
+  default_exclude_tls_namespaces = [
+    "default", "kube-system", "kube-public", 
+    "kube-node-lease", "nginx-ingress", "ceph-csi", "pxc-controller-ext"
+  ]
+}
+
 resource "kubernetes_namespace" "ext_pxc_controller" {
   metadata {
     name = "pxc-controller-ext"

@@ -35,6 +35,17 @@ variable "exclude_mirror_namespaces" {
   default = []
 }
 
+variable "default_exclude_mirror_namespaces" {
+  type = list(string)
+  description = "Namespaces that are default excluded from mirroring, this can be overwritten for e2e."
+  default = [
+    "default", "kube-system", "kube-public", 
+    "kube-node-lease", "pve-cloud-controller", 
+    "nginx-ingress", "ceph-csi", "pve-cloud-backup",
+    "pve-cloud-monitoring-master", "pve-cloud-monitoring-client"
+  ]
+}
+
 variable "exclude_tls_namespaces" {
   type = list(string)
   description = "Namespaces that dont get cluster-tls injected."

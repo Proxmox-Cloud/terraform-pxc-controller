@@ -8,7 +8,7 @@ But first you need to generate a central multi cloud token that will be used by 
 # generate random token for multi cloud communication
 resource "random_password" "multi_cloud_token" {
   length           = 32
-  special          = true
+  special          = false
 }
 
 resource "pxc_cloud_secret" "multi_cloud_token" {

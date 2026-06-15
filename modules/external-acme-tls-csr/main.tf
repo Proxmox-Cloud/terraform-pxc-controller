@@ -1,29 +1,5 @@
-variable "cert_config" {
-  type = list(object({
-    zone = string
-    names = list(string)
-    apex_zone_san = optional(bool, false)
-  }))
-}
-
-locals {
-  subdomain_sans = flatten([
-    for entry in var.cert_config : [
-      for name in entry.names : "${name}.${entry.zone}"
-    ]
-  ])
-
-  apex_sans = flatten([
-    for entry in var.cert_config : 
-    entry.apex_zone_san ? [entry.zone] : []
-  ])
-
-  all_sans = concat(local.subdomain_sans, local.apex_sans)
-
-  common_name = local.subdomain_sans[0]
-}
-
-
+# this is the terraform version of pxc.cloud roles apply_acme_certs role
+# used to provide tls for external non pxc k8s clusters
 resource "tls_private_key" "cert_key" {
   algorithm   = "ECDSA"
   ecdsa_curve = "P256"

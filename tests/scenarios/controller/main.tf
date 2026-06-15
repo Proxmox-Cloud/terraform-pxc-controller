@@ -110,7 +110,20 @@ module "controller" {
   external_forwarded_ip = "127.0.0.1" # test too
   route53_endpoint_url = "http://pve-cloud-moto.moto-mock.svc.cluster.local:5000"
 
-  exclude_mirror_namespaces = ["harbor"]
+  # exclude harbor from mirroring if e2e suite is configured with external harbor mirror
+  exclude_mirror_namespaces = contains(keys(local.test_pve_conf["kubernetes"]), "harbor_copy_mirror_host") ? [] : ["harbor"]
+
+  # widen mirroring if external mirror is defined
+  default_exclude_mirror_namespaces = contains(keys(local.test_pve_conf["kubernetes"]), "harbor_copy_mirror_host") ? [
+    "default", "kube-system", "kube-public", 
+    "kube-node-lease", "pve-cloud-controller",
+    "nginx-ingress", "ceph-csi", "pve-cloud-backup",
+  ] : [
+    "default", "kube-system", "kube-public", 
+    "kube-node-lease", "pve-cloud-controller", 
+    "nginx-ingress", "ceph-csi", "pve-cloud-backup",
+    "pve-cloud-monitoring-master", "pve-cloud-monitoring-client"
+  ]
 
   log_level = "DEBUG"
 
@@ -127,7 +140,7 @@ module "controller" {
      }
   ]
 
-  harbor_mirror_host = "harbor.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
+  harbor_mirror_host = contains(keys(local.test_pve_conf["kubernetes"]), "harbor_copy_mirror_host") ?  local.test_pve_conf["kubernetes"]["harbor_copy_mirror_host"] : "harbor.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
 }
 
 resource "time_sleep" "wait_for_controller" {
@@ -178,6 +191,7 @@ output "age_out" {
 # these tests require the fields pve_test_k8s_tls_copy_* to be set in the test env file
 resource "random_password" "harbor_pw" {
   length = 24
+  special = false
 }
 
 resource "kubernetes_namespace_v1" "harbor" {

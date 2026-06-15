@@ -43,9 +43,9 @@ resource "helm_release" "kube_prom_stack" {
   chart      = "kube-prometheus-stack"
 
   name             = "kube-prometheus-stack"
-  namespace        = "pve-cloud-monitoring-master"
-  create_namespace = true
-
+  namespace        = kubernetes_namespace.mon_ns.metadata[0].name
+  create_namespace = false
+  
   version = "72.9.1"
 
   values = [

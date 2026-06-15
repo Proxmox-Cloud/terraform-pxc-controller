@@ -27,13 +27,6 @@ locals {
 
   pg_conn_str = "postgresql+psycopg2://postgres:${data.pxc_cloud_file_secret.patroni.secret}@${local.cluster_vars.pve_haproxy_floating_ip_internal}:5000/pve_cloud?sslmode=disable"
 
-  default_exclude_mirror_namespaces = [
-    "default", "kube-system", "kube-public", 
-    "kube-node-lease", "pve-cloud-controller", 
-    "nginx-ingress", "ceph-csi", "pve-cloud-backup",
-    "pve-cloud-monitoring-master", "pve-cloud-monitoring-client"
-  ]
-
   default_exclude_tls_namespaces = [
     "default", "kube-system", "kube-public", 
     "kube-node-lease", "nginx-ingress", "ceph-csi", "pve-cloud-backup"
@@ -62,7 +55,7 @@ locals {
 resource "kubernetes_secret" "mirror_pull_secret" {
   metadata {
     namespace = kubernetes_namespace.pve_cloud_controller.metadata[0].name
-    name = local.harbor_mirror_enabled ? "mirror-pull-secret" : "mps-undefined" # fuck tf
+    name = local.harbor_mirror_enabled ? "mirror-pull-secret" : "mps-undefined"
   }
   data = {
     ".dockerconfigjson" =  local.harbor_mirror_enabled ? local.harbor_mirror_auth.dockerconfig : "{}"
@@ -203,7 +196,7 @@ resource "kubernetes_deployment_v1" "pod_watcher" {
 
           env {
             name  = "EXCLUDE_MIRROR_NAMESPACES"
-            value = join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))
+            value = join(",", concat(var.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))
           }
 
           # harbor mirror vars
@@ -371,7 +364,7 @@ resource "kubernetes_deployment_v1" "adm_deployment" {
           }
           env {
             name  = "EXCLUDE_MIRROR_NAMESPACES"
-            value = join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))
+            value = join(",", concat(var.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))
           }
           env {
             name  = "BIND_MASTER_IP"
@@ -534,7 +527,7 @@ resource "kubernetes_mutating_webhook_configuration" "adm_hook" {
       match_expressions {
         key = "kubernetes.io/metadata.name"
         operator = "NotIn"
-        values = concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces)
+        values = concat(var.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces)
       }
     }
 
@@ -741,7 +734,7 @@ resource "kubernetes_cron_job_v1" "cron" {
 
               env {
                 name  = "EXCLUDE_MIRROR_NAMESPACES"
-                value = join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))
+                value = join(",", concat(var.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))
               }
 
               env {
@@ -902,7 +895,7 @@ resource "kubernetes_job_v1" "init_job" {
 
           env {
             name  = "EXCLUDE_MIRROR_NAMESPACES"
-            value = join(",", concat(local.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))
+            value = join(",", concat(var.default_exclude_mirror_namespaces, var.exclude_mirror_namespaces))
           }
           env {
             name  = "EXCLUDE_TLS_NAMESPACES"

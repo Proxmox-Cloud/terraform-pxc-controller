@@ -33,6 +33,7 @@ resource "helm_release" "harbor" {
 
   values = [
     <<-YML
+      # set this for smooth deployments / upgrades
       updateStrategy:
         type: Recreate
       expose:
@@ -54,5 +55,67 @@ resource "helm_release" "harbor" {
       harborAdminPassword: ${random_password.harbor_pw.result}
     YML
   ]
+}
+```
+
+After you have deployed this use the harbor terraform provider and our `harbor-mirror-projects`, `harbor-cluster-robot` and `harbor-namespace-inject` modules to integrate it into the cloud:
+
+```tf
+data "kubernetes_secret" "harbor_creds" {
+  metadata {
+    name = "harbor-core"
+    namespace = "harbor"
+  }
+}
+
+data "kubernetes_ingress_v1" "harbor_ingress" {
+  metadata {
+    name = "harbor-ingress"
+    namespace = "harbor"
+  }
+}
+
+locals {
+  harbor_host = data.kubernetes_ingress_v1.harbor_ingress.spec[0].rule[0].host
+}
+
+provider "harbor" {
+  url = "https://${local.harbor_host}"
+  username = "admin"
+  password = data.kubernetes_secret.harbor_creds.data["HARBOR_ADMIN_PASSWORD"]
+}
+
+# for example create a generic access robot for your entire harbor
+module "harbor_access" {
+  source = "Proxmox-Cloud/controller/pxc//modules/harbor-cluster-robot"
+  version = "XXX"
+  scope_name = "k8s"
+  harbor_permissions = [
+    {
+      namespace = "*"
+      access = [
+        {
+          action = "pull"
+        }
+      ]
+    }
+  ]
+  harbor_host = local.harbor_host
+}
+
+output "harbor_pull_creds" {
+  value = {
+    full_name = nonsensitive(module.harbor_access.robot_creds.full_name)
+    secret = nonsensitive(module.harbor_access.robot_creds.secret)
+    dockerconfig = nonsensitive(module.harbor_access.robot_creds.dockerconfig)
+  }
+}
+
+# deploy mirroring proxy caches and full mirror repos => this enables the use of `harbor_mirror_host` variable on the controller deployment
+# and will dynamically cache and create a full mirror of any images used in your cluster
+module "harbor_mirror_projects" {
+  source = "Proxmox-Cloud/controller/pxc//modules/harbor-mirror-projects"
+  version = "XXX"
+  harbor_host = local.harbor_host
 }
 ```

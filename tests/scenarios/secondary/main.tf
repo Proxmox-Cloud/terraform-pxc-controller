@@ -37,7 +37,19 @@ module "controller" {
   log_level = "DEBUG"
 
   # set harbor host if tls is available, needs valid certificate to perform testing
-  harbor_mirror_host = "harbor.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
+  harbor_mirror_host = contains(keys(local.test_pve_conf["kubernetes"]), "harbor_copy_mirror_host") ?  local.test_pve_conf["kubernetes"]["harbor_copy_mirror_host"] : "harbor.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
+
+  # widen mirroring if external mirror is defined
+  default_exclude_mirror_namespaces = contains(keys(local.test_pve_conf["kubernetes"]), "harbor_copy_mirror_host") ? [
+    "default", "kube-system", "kube-public", 
+    "kube-node-lease", "pve-cloud-controller",
+    "nginx-ingress", "ceph-csi", "pve-cloud-backup",
+  ] : [
+    "default", "kube-system", "kube-public", 
+    "kube-node-lease", "pve-cloud-controller", 
+    "nginx-ingress", "ceph-csi", "pve-cloud-backup",
+    "pve-cloud-monitoring-master", "pve-cloud-monitoring-client"
+  ]
 }
 
 resource "time_sleep" "wait_for_controller" {
@@ -161,4 +173,19 @@ module "ext_pxc_controller" {
   cloud_controller_version = var.cloud_controller_version
 
   log_level = "DEBUG"
+}
+
+
+data "pxc_cloud_secret" "mc_discovery" {
+  secret_name = "mc_discovery"
+}
+
+locals {
+  mc_peers_set = data.pxc_cloud_secret.mc_discovery.secret_data != "" ? toset(jsondecode(data.pxc_cloud_secret.mc_discovery.secret_data).peers) : toset([])
+  mc_token = data.pxc_cloud_secret.mc_discovery.secret_data != "" ? jsondecode(data.pxc_cloud_secret.mc_discovery.secret_data).token : ""
+}
+
+data "pxc_gotify_master" "gotify_master" {
+  mc_peers = local.mc_peers_set
+  mc_token = local.mc_token
 }

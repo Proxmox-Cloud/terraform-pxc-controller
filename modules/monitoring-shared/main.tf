@@ -1,3 +1,6 @@
+# todo: evaluate moving this module to helm aswell. Helm templating may be much better suited 
+# then terraform tempalting
+
 data "pxc_pve_inventory" "inv" {
     count = var.monitor_proxmox_cluster ? 1 : 0
 }

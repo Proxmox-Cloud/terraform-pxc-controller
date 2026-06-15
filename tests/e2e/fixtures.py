@@ -230,11 +230,23 @@ def harbor_scenario(
         "pxc-controller", scenario_name, get_k8s_api_v1, get_test_env, get_kubespray_inv
     )
 
+    extra_apply_env = {}
+    extra_apply_env["CLOUD_AGE_SSH_KEY_FILE"] = f"{os.getcwd()}/tests/id_ed25519"
+
+    ctlr_vers, tdd_ip = get_tdd_version("pve-cloud-controller")
+
+    if ctlr_vers:
+        # set controller base image
+        extra_apply_env["TF_VAR_cloud_controller_image"] = (
+            f"{tdd_ip}:5000/pve-cloud-controller"
+        )
+        extra_apply_env["TF_VAR_cloud_controller_version"] = ctlr_vers
+        
     # we also need to reapply the controller scenario as the controller module gets
     # secrets by discovery that are set during the harbor scenario
     # todo: only do once with redis key check
     apply(
-        "pxc-controller", "controller", get_k8s_api_v1, get_test_env, get_kubespray_inv
+        "pxc-controller", "controller", get_k8s_api_v1, get_test_env, get_kubespray_inv, extra_apply_env
     )
 
     yield

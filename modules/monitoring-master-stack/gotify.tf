@@ -1,6 +1,6 @@
 resource "random_password" "gotify_admin_pw" {
-  length           = 16
-  special          = true
+  length           = 24
+  special          = false
 }
 
 resource "helm_release" "gotify" {
