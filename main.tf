@@ -69,15 +69,15 @@ data "pxc_cloud_secret" "e2e_harbor_admin" {
 locals {
   # prefer e2e else return first / null based on discovery secrets
   harbor_mirror_auth = var.harbor_e2e_mirror_host != null ? jsondecode(data.pxc_cloud_secret.e2e_harbor_mirror[0].secret_data) : (
-    length(local.harbor_mirror_secrets) > 0 ? local.harbor_mirror_secrets[0] : null
+    length(local.harbor_mirror_secrets) > 0 ? values(local.harbor_mirror_secrets)[0] : null
   )
 
   harbor_admin_auth = var.harbor_e2e_mirror_host != null ? jsondecode(data.pxc_cloud_secret.e2e_harbor_admin[0].secret_data) : (
-    length(local.harbor_admin_secrets) > 0 ? local.harbor_admin_secrets[0] : null
+    length(local.harbor_admin_secrets) > 0 ? values(local.harbor_admin_secrets)[0] : null
   )
 
   harbor_mirror_enabled = var.harbor_e2e_mirror_host != null || (local.harbor_mirror_auth != null && local.harbor_admin_auth != null)
-  harbor_mirror_host = local.harbor_mirror_enabled ? jsondecode(data.pxc_cloud_secret.e2e_harbor_admin[0].secret_data)["harbor_host"] : null
+  harbor_mirror_host = local.harbor_mirror_enabled ? local.harbor_admin_auth["harbor_host"] : null
 }
 
 # todo: this should be ported to helm so we dont have to create dummy secrets to get around terraforms limitations
