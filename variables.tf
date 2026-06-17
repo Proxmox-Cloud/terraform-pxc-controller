@@ -22,13 +22,6 @@ variable "adm_controller_replicas" {
   default = 2
 }
 
-# todo: replace with secret lookup
-variable "harbor_mirror_host" {
-  type = string
-  default = null
-  description = "If set the cloud controller will use admission controller patches to use the specified harbor mirror. The mirror has to have the harbor-mirror-projects submodule initialized with."
-}
-
 variable "exclude_mirror_namespaces" {
   type = list(string)
   description = "Namespaces to exclude from harbor registry mirroring (admission controller hook)."
@@ -96,4 +89,10 @@ variable "tolerations" {
   type = list(map(string))
   default = null
   description = "Tolerations to add to all controller deployments/jobs."
+}
+
+variable "harbor_e2e_mirror_host" {
+  type = string
+  default = null
+  description = "Select a specific e2e test injected mirror secret to use instead of default discovery."
 }

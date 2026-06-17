@@ -33,21 +33,51 @@ locals {
   ]
 }
 
-# try to fetch mirror credentials if available
-data "pxc_cloud_secret" "harbor_mirror" {
-  secret_name = "${var.harbor_mirror_host}-mirror"
+# harbor mirror discovery
+data "pxc_cloud_secrets" "harbor_admin" {
+  secret_type = "harbor-admin-auth"
 }
 
-data "pxc_cloud_secret" "harbor_admin" {
-  secret_name = "${var.harbor_mirror_host}-admin"
+data "pxc_cloud_secrets" "harbor_mirror" {
+  secret_type = "harbor-mirror-auth"
 }
 
 locals {
-  harbor_mirror_auth = var.harbor_mirror_host != null && data.pxc_cloud_secret.harbor_mirror.secret_data != "" ? jsondecode(data.pxc_cloud_secret.harbor_mirror.secret_data) : null
-  harbor_admin_auth = var.harbor_mirror_host != null && data.pxc_cloud_secret.harbor_admin.secret_data != "" ? jsondecode(data.pxc_cloud_secret.harbor_admin.secret_data) : null
-  
-  # the secrets get created through the harbor mirror projects module
-  harbor_mirror_enabled = var.harbor_mirror_host != null && local.harbor_mirror_auth != null && local.harbor_admin_auth != null
+  harbor_admin_secrets = jsondecode(data.pxc_cloud_secrets.harbor_admin.secrets_data)
+  harbor_mirror_secrets = jsondecode(data.pxc_cloud_secrets.harbor_mirror.secrets_data)
+}
+
+check "mirror_discovery_valid" {
+  assert {
+    # only in e2e scenario it is valid when we find more than one discovery secret
+    condition     = var.harbor_e2e_mirror_host != null || (length(local.harbor_mirror_secrets) <= 1 && length(local.harbor_admin_secrets) <= 1)
+    error_message = "More than one harbor discovery secret found!"
+  }
+}
+
+# specific e2e tests if variable is defined
+data "pxc_cloud_secret" "e2e_harbor_mirror" {
+  count = var.harbor_e2e_mirror_host != null ? 1 : 0
+  secret_name = "${var.harbor_e2e_mirror_host}-mirror"
+}
+
+data "pxc_cloud_secret" "e2e_harbor_admin" {
+  count = var.harbor_e2e_mirror_host != null ? 1 : 0
+  secret_name = "${var.harbor_e2e_mirror_host}-admin"
+}
+
+locals {
+  # prefer e2e else return first / null based on discovery secrets
+  harbor_mirror_auth = var.harbor_e2e_mirror_host != null ? jsondecode(data.pxc_cloud_secret.e2e_harbor_mirror[0].secret_data) : (
+    length(local.harbor_mirror_secrets) > 0 ? local.harbor_mirror_secrets[0] : null
+  )
+
+  harbor_admin_auth = var.harbor_e2e_mirror_host != null ? jsondecode(data.pxc_cloud_secret.e2e_harbor_admin[0].secret_data) : (
+    length(local.harbor_admin_secrets) > 0 ? local.harbor_admin_secrets[0] : null
+  )
+
+  harbor_mirror_enabled = var.harbor_e2e_mirror_host != null || (local.harbor_mirror_auth != null && local.harbor_admin_auth != null)
+  harbor_mirror_host = local.harbor_mirror_enabled ? jsondecode(data.pxc_cloud_secret.e2e_harbor_admin[0].secret_data)["harbor_host"] : null
 }
 
 # todo: this should be ported to helm so we dont have to create dummy secrets to get around terraforms limitations
@@ -137,7 +167,7 @@ resource "kubernetes_deployment_v1" "ns_watcher" {
             for_each = local.harbor_mirror_enabled != null ? [1] : []
             content {
               name  = "HARBOR_MIRROR_HOST"
-              value = var.harbor_mirror_host
+              value = local.harbor_mirror_host
             }
           }
 
@@ -220,7 +250,7 @@ resource "kubernetes_deployment_v1" "pod_watcher" {
             for_each = local.harbor_mirror_enabled ? [1] : []
             content {
               name  = "HARBOR_MIRROR_HOST"
-              value = var.harbor_mirror_host
+              value = local.harbor_mirror_host
             }
           }
 
@@ -384,7 +414,7 @@ resource "kubernetes_deployment_v1" "adm_deployment" {
             for_each = local.harbor_mirror_enabled ? [1] : []
             content {
               name  = "HARBOR_MIRROR_HOST"
-              value = var.harbor_mirror_host
+              value = local.harbor_mirror_host
             }
           }
 
@@ -665,7 +695,7 @@ resource "kubernetes_cron_job_v1" "cron" {
                 for_each = local.harbor_mirror_enabled ? [1] : []
                 content {
                   name  = "HARBOR_MIRROR_HOST"
-                  value = var.harbor_mirror_host
+                  value = local.harbor_mirror_host
                 }
               }
 
@@ -829,7 +859,7 @@ resource "kubernetes_job_v1" "init_job" {
             for_each = local.harbor_mirror_enabled ? [1] : []
             content {
               name  = "HARBOR_MIRROR_HOST"
-              value = var.harbor_mirror_host
+              value = local.harbor_mirror_host
             }
           }
           dynamic "env" {
