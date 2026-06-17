@@ -18,4 +18,6 @@ provider "pxc" {
 module "harbor_mirror_projects" {
   source = "../../../modules/harbor-mirror-projects"
   harbor_host = local.harbor_host
+
+  skip_pxc_secret_creation_e2e = contains(keys(local.test_pve_conf["kubernetes"]), "harbor_copy_mirror_host")
 }

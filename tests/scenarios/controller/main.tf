@@ -140,7 +140,7 @@ module "controller" {
      }
   ]
 
-  harbor_mirror_host = contains(keys(local.test_pve_conf["kubernetes"]), "harbor_copy_mirror_host") ?  local.test_pve_conf["kubernetes"]["harbor_copy_mirror_host"] : "harbor.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
+  harbor_e2e_mirror_host = contains(keys(local.test_pve_conf["kubernetes"]), "harbor_copy_mirror_host") ?  local.test_pve_conf["kubernetes"]["harbor_copy_mirror_host"] : null
 }
 
 resource "time_sleep" "wait_for_controller" {

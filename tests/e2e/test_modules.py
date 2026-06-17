@@ -511,8 +511,8 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
     )
     response = requests.get(
         f"http://alertmgr.{get_test_env['kubernetes']['deployments_domain']}/api/v2/alerts",
-        timeout=5,
     )
+    logger.info(response)
     response.raise_for_status()
 
     alerts = response.json()

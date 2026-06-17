@@ -21,7 +21,6 @@ variable "cloud_controller_version" {
   default = null
 }
 
-
 provider "pxc" {
   inventory = var.e2e_kubespray_inv
 }
@@ -37,7 +36,7 @@ module "controller" {
   log_level = "DEBUG"
 
   # set harbor host if tls is available, needs valid certificate to perform testing
-  harbor_mirror_host = contains(keys(local.test_pve_conf["kubernetes"]), "harbor_copy_mirror_host") ?  local.test_pve_conf["kubernetes"]["harbor_copy_mirror_host"] : "harbor.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
+  harbor_e2e_mirror_host = contains(keys(local.test_pve_conf["kubernetes"]), "harbor_copy_mirror_host") ?  local.test_pve_conf["kubernetes"]["harbor_copy_mirror_host"] : null
 
   # widen mirroring if external mirror is defined
   default_exclude_mirror_namespaces = contains(keys(local.test_pve_conf["kubernetes"]), "harbor_copy_mirror_host") ? [
