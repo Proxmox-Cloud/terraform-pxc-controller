@@ -16,15 +16,15 @@ resource "tls_cert_request" "csr" {
 }
 
 resource "pxc_external_acme_tls" "external_tls" {
-  config = {
+  config_json = jsonencode({
     cn = local.common_name
     san =  local.all_sans
     workflow = "acme"
-  }
-  ec_csr = {
+  })
+  ec_csr_json = jsonencode({
     csr = tls_cert_request.csr.cert_request_pem
     privkey = tls_private_key.cert_key.private_key_pem
-  }
+  })
 }
 
 output "config" {
