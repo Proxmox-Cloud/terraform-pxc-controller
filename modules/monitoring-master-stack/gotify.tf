@@ -3,11 +3,18 @@ resource "random_password" "gotify_admin_pw" {
   special          = false
 }
 
-resource "helm_release" "gotify" {
-  # todo: replace with original once they merged changes for update strategy
-  repository = "oci://registry-1.docker.io/tobiashvmz"
+resource "pxc_helm_mirror" "gotify" {
+  source_repository = "oci://registry-1.docker.io/tobiashvmz"
+  source_name = "docker-io"
   chart = "gotify"
   version = "0.7.1"
+}
+
+resource "helm_release" "gotify" {
+  # todo: replace with original once they merged changes for update strategy
+  repository = pxc_helm_mirror.gotify.repository_out
+  chart = pxc_helm_mirror.gotify.chart
+  version = pxc_helm_mirror.gotify.version
   name = "gotify"
   namespace = helm_release.kube_prom_stack.namespace
 

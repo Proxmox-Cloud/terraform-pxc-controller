@@ -65,15 +65,23 @@ resource "kubernetes_secret" "basic_auth_secret" {
   }
 }
 
+resource "pxc_helm_mirror" "kube_prom_stack" {
+  source_repository = "https://prometheus-community.github.io/helm-charts"
+  source_name = "prom-community"
+  chart = "kube-prometheus-stack"
+  version = "72.9.1"
+}
+
+
 resource "helm_release" "kube_prom_stack" {
-  repository = "https://prometheus-community.github.io/helm-charts"
-  chart      = "kube-prometheus-stack"
+  repository = pxc_helm_mirror.kube_prom_stack.repository_out
+  chart      = pxc_helm_mirror.kube_prom_stack.chart
 
   name             = "kube-prometheus-stack"
   namespace        = kubernetes_namespace.mon_ns.metadata[0].name
   create_namespace = false
 
-  version = "72.9.1"
+  version = pxc_helm_mirror.kube_prom_stack.version
 
   values = [
     module.mon_shared.scrape_config,

@@ -201,10 +201,17 @@ resource "kubernetes_namespace_v1" "harbor" {
   }
 }
 
-resource "helm_release" "harbor" {
-  repository = "https://helm.goharbor.io"
+resource "pxc_helm_mirror" "harbor" {
+  source_repository = "https://helm.goharbor.io"
+  source_name = "gohabor"
   chart = "harbor"
   version = "1.18.1"
+}
+
+resource "helm_release" "harbor" {
+  repository = pxc_helm_mirror.harbor.repository_out
+  chart = pxc_helm_mirror.harbor.chart
+  version = pxc_helm_mirror.harbor.version
   name = "harbor"
   namespace = kubernetes_namespace_v1.harbor.metadata[0].name
 
@@ -235,3 +242,4 @@ resource "helm_release" "harbor" {
 
   timeout = 1200
 }
+

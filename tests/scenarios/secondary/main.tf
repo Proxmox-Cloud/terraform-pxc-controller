@@ -57,10 +57,17 @@ resource "time_sleep" "wait_for_controller" {
   create_duration = "1m"
 }
 
-resource "helm_release" "openebs" {
-  repository = "https://openebs.github.io/openebs"
+resource "pxc_helm_mirror" "openebs" {
+  source_repository = "https://openebs.github.io/openebs"
+  source_name = "openebs"
   chart = "openebs"
   version = "4.4.0"
+}
+
+resource "helm_release" "openebs" {
+  repository = pxc_helm_mirror.openebs.repository_out
+  chart = pxc_helm_mirror.openebs.chart
+  version = pxc_helm_mirror.openebs.version
   name = "openebs"
   namespace = "openebs"
   create_namespace = true
@@ -188,3 +195,24 @@ data "pxc_gotify_master" "gotify_master" {
   mc_peers = local.mc_peers_set
   mc_token = local.mc_token
 }
+
+
+# debug
+resource "pxc_helm_mirror" "kube_prom_stack" {
+  source_repository = "https://prometheus-community.github.io/helm-charts"
+  source_name = "prom-community"
+  chart = "kube-prometheus-stack"
+  version = "72.9.1"
+}
+
+
+# resource "helm_release" "kube_prom_stack" {
+#   repository = pxc_helm_mirror.kube_prom_stack.repository_out
+#   chart      = pxc_helm_mirror.kube_prom_stack.chart
+
+#   name             = "tigger"
+#   namespace        = "tigger"
+#   create_namespace = true
+
+#   version = pxc_helm_mirror.kube_prom_stack.version
+# }

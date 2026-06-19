@@ -47,11 +47,18 @@ locals {
   }
 }
 
-# replace ingress with oauth / use victoria method?
-resource "helm_release" "vlogs_ml" {
-  repository = "https://victoriametrics.github.io/helm-charts/"
+resource "pxc_helm_mirror" "vlogs_ml" {
+  source_repository = "https://victoriametrics.github.io/helm-charts/"
+  source_name = "vmetrics"
   chart = "victoria-logs-multilevel"
   version = "0.0.9"
+}
+
+# replace ingress with oauth / use victoria method?
+resource "helm_release" "vlogs_ml" {
+  repository = pxc_helm_mirror.vlogs_ml.repository_out
+  chart = pxc_helm_mirror.vlogs_ml.chart
+  version = pxc_helm_mirror.vlogs_ml.version
   name = "vlogs-ml"
   namespace = kubernetes_namespace.mon_ns.metadata[0].name
   create_namespace = true
@@ -91,10 +98,17 @@ resource "helm_release" "vlogs_ml" {
 
 # also deploy database and alerting
 # todo: refactor later into shared?
-resource "helm_release" "vlogs" {
-  repository = "https://victoriametrics.github.io/helm-charts/"
+resource "pxc_helm_mirror" "vlogs" {
+  source_repository = "https://victoriametrics.github.io/helm-charts/"
+  source_name = "vmetrics"
   chart = "victoria-logs-single"
   version = "0.11.26"
+}
+
+resource "helm_release" "vlogs" {
+  repository = pxc_helm_mirror.vlogs.repository_out
+  chart = pxc_helm_mirror.vlogs.chart
+  version = pxc_helm_mirror.vlogs.version
   name = "vlogs"
   namespace = kubernetes_namespace.mon_ns.metadata[0].name
   create_namespace = true
@@ -104,11 +118,17 @@ resource "helm_release" "vlogs" {
   timeout = 1200
 }
 
-
-resource "helm_release" "vmalert" {
-  repository = "https://victoriametrics.github.io/helm-charts/"
+resource "pxc_helm_mirror" "vmalert" {
+  source_repository = "https://victoriametrics.github.io/helm-charts/"
+  source_name = "vmetrics"
   chart = "victoria-metrics-alert"
   version = "0.32.0"
+}
+
+resource "helm_release" "vmalert" {
+  repository = pxc_helm_mirror.vmalert.repository_out
+  chart = pxc_helm_mirror.vmalert.chart
+  version = pxc_helm_mirror.vmalert.version
   name = "vmalert"
   namespace = kubernetes_namespace.mon_ns.metadata[0].name
 

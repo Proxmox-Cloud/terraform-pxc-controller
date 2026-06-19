@@ -4,6 +4,7 @@ ephemeral "pxc_kubeconfig" "kubeconfig" {}
 
 locals {
   kubeconfig = yamldecode(ephemeral.pxc_kubeconfig.kubeconfig.config)
+  registries = jsondecode(ephemeral.pxc_kubeconfig.kubeconfig.registries)
 }
 
 provider "kubernetes" {
@@ -20,6 +21,14 @@ provider "helm" {
     host = local.kubeconfig.clusters[0].cluster.server
     cluster_ca_certificate = base64decode(local.kubeconfig.clusters[0].cluster.certificate-authority-data) 
   }
+  
+  registries = [ 
+    for r in local.registries : {
+      url = "oci://${r.harbor_host}"
+      username = r.full_name
+      password = r.secret
+    }
+  ]
 }
 
 # for reading worker ips for metrics exporter on pve

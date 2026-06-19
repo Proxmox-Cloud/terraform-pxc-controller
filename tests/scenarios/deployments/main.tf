@@ -19,10 +19,17 @@ provider "pxc" {
   inventory = var.e2e_kubespray_inv
 }
 
-resource "helm_release" "nginx_test" {
-  repository = "https://charts.bitnami.com/bitnami"
+resource "pxc_helm_mirror" "nginx_bitnami" {
+  source_repository = "https://charts.bitnami.com/bitnami"
+  source_name = "bitnami"
   chart = "nginx"
   version = "22.4.2"
+}
+
+resource "helm_release" "nginx_test" {
+  repository = pxc_helm_mirror.nginx_bitnami.repository_out
+  chart = pxc_helm_mirror.nginx_bitnami.chart
+  version = pxc_helm_mirror.nginx_bitnami.version
   create_namespace = true
   namespace = "nginx-test"
   
@@ -43,9 +50,9 @@ resource "helm_release" "nginx_test" {
 }
 
 resource "helm_release" "nginx_external_test" {
-  repository = "https://charts.bitnami.com/bitnami"
-  chart = "nginx"
-  version = "22.4.2"
+  repository = pxc_helm_mirror.nginx_bitnami.repository_out
+  chart = pxc_helm_mirror.nginx_bitnami.chart
+  version = pxc_helm_mirror.nginx_bitnami.version
   create_namespace = true
   namespace = "nginx-external-test"
   
@@ -66,9 +73,9 @@ resource "helm_release" "nginx_external_test" {
 }
 
 resource "helm_release" "nginx_ns_delete_test" {
-  repository = "https://charts.bitnami.com/bitnami"
-  chart = "nginx"
-  version = "22.4.2"
+  repository = pxc_helm_mirror.nginx_bitnami.repository_out
+  chart = pxc_helm_mirror.nginx_bitnami.chart
+  version = pxc_helm_mirror.nginx_bitnami.version
   create_namespace = true
   namespace = "nginx-ns-delete-test"
   
@@ -153,9 +160,9 @@ resource "kubernetes_manifest" "karma_ingress" {
 
 # whitelist source ingress test (proxy protocol)
 resource "helm_release" "nginx_test_proto" {
-  repository = "https://charts.bitnami.com/bitnami"
-  chart = "nginx"
-  version = "22.4.2"
+  repository = pxc_helm_mirror.nginx_bitnami.repository_out
+  chart = pxc_helm_mirror.nginx_bitnami.chart
+  version = pxc_helm_mirror.nginx_bitnami.version
   create_namespace = true
   namespace = "nginx-test-prxy-proto"
   

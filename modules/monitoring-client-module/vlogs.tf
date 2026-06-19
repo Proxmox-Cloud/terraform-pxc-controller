@@ -25,11 +25,17 @@ resource "pxc_cloud_secret" "vlogs_discovery" {
   secret_type = "vlogs-storage-node"
 }
 
-
-resource "helm_release" "vlogs" {
-  repository = "https://victoriametrics.github.io/helm-charts/"
+resource "pxc_helm_mirror" "vlogs" {
+  source_repository = "https://victoriametrics.github.io/helm-charts/"
+  source_name = "vmetrics"
   chart = "victoria-logs-single"
   version = "0.11.26"
+}
+
+resource "helm_release" "vlogs" {
+  repository = pxc_helm_mirror.vlogs.repository_out
+  chart = pxc_helm_mirror.vlogs.chart
+  version = pxc_helm_mirror.vlogs.version
   name = "vlogs"
   namespace = kubernetes_namespace.mon_ns.metadata[0].name
   create_namespace = true
@@ -39,12 +45,18 @@ resource "helm_release" "vlogs" {
   timeout = 1200
 }
 
+resource "pxc_helm_mirror" "vmalert" {
+  source_repository = "https://victoriametrics.github.io/helm-charts/"
+  source_name = "vmetrics"
+  chart = "victoria-metrics-alert"
+  version = "0.32.0"
+}
 
 resource "helm_release" "vmalert" {
   count = var.logging_only ? 0 : 1 # no alerts when flag is true
-  repository = "https://victoriametrics.github.io/helm-charts/"
-  chart = "victoria-metrics-alert"
-  version = "0.32.0"
+  repository = pxc_helm_mirror.vmalert.repository_out
+  chart = pxc_helm_mirror.vmalert.chart
+  version = pxc_helm_mirror.vmalert.version
   name = "vmalert"
   namespace = kubernetes_namespace.mon_ns.metadata[0].name
 
