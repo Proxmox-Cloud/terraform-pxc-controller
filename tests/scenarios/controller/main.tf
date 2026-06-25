@@ -243,3 +243,9 @@ resource "helm_release" "harbor" {
   timeout = 1200
 }
 
+resource "pxc_dns_cname_record" "test_cname" {
+  zone = local.test_pve_conf["kubernetes"]["deployments_domain"]
+  name = "cname-test-record"
+  cname = "google.de."
+  ttl = 600
+}
