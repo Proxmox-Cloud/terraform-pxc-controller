@@ -50,6 +50,7 @@ variable "default_exclude_mirror_namespaces" {
     "default", "kube-system", "kube-public", 
     "kube-node-lease", "pve-cloud-controller", 
     "nginx-ingress", "ceph-csi", "pve-cloud-backup",
-    "pve-cloud-monitoring-master", "pve-cloud-monitoring-client"
+    "pve-cloud-monitoring-master", "pve-cloud-monitoring-client",
+    "pxc-controller-ext"
   ]
 }
