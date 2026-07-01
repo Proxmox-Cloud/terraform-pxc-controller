@@ -31,3 +31,25 @@ variable "log_level" {
   type = string
   default = "INFO"
 }
+
+variable "adm_controller_replicas" {
+  type = number
+  default = 2
+}
+
+variable "exclude_mirror_namespaces" {
+  type = list(string)
+  description = "Namespaces to exclude from harbor registry mirroring (admission controller hook)."
+  default = []
+}
+
+variable "default_exclude_mirror_namespaces" {
+  type = list(string)
+  description = "Namespaces that are default excluded from mirroring, this can be overwritten for e2e."
+  default = [
+    "default", "kube-system", "kube-public", 
+    "kube-node-lease", "pve-cloud-controller", 
+    "nginx-ingress", "ceph-csi", "pve-cloud-backup",
+    "pve-cloud-monitoring-master", "pve-cloud-monitoring-client"
+  ]
+}
