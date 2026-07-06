@@ -509,11 +509,28 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
     logger.info(
         f"querying http://alertmgr.{get_test_env['kubernetes']['deployments_domain']}/api/v2/alerts"
     )
-    response = requests.get(
-        f"http://alertmgr.{get_test_env['kubernetes']['deployments_domain']}/api/v2/alerts",
-    )
+
+    # for some reason we need to retry here when running the full suite,
+    # maybe some deploy / refresh makes the endpoint unresponsive for a short interval?
+    # todo: this should be further investigated and the testing system adjusted accordingly
+    url = f"http://alertmgr.{get_test_env['kubernetes']['deployments_domain']}/api/v2/alerts"
+    max_retries = 3
+    retry_delay = 5
+    response = None
+
+    for attempt in range(max_retries):
+        try:
+            response = requests.get(url)
+            response.raise_for_status()
+            break
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Attempt {attempt + 1}/{max_retries} failed: {e}")
+            if attempt < max_retries - 1:
+                time.sleep(retry_delay)
+            else:
+                raise
+
     logger.info(response)
-    response.raise_for_status()
 
     alerts = response.json()
 
