@@ -10,7 +10,9 @@ import pytest
 from pve_cloud_test.cloud_fixtures import (cloud_fixture, get_proxmoxer,
                                            get_tdd_version, get_test_env)
 from pve_cloud_test.k8s_fixtures import (get_k8s_api_v1,
+                                         get_k8s_api_v1_batch,
                                          get_k8s_secondary_api_v1,
+                                         get_k8s_secondary_api_v1_batch,
                                          get_kubespray_inv,
                                          get_secondary_kubespray_inv)
 from pve_cloud_test.terraform import apply, destroy, get_mc_gw_http_mock
@@ -127,10 +129,34 @@ def get_moto_client(get_test_env, get_proxmoxer, controller_scenario):
     return client
 
 
+# when booting up the testing system cron jobs sometimes fail
+# due to unmet startup conditions, that are harmless
+# we clean them up once before running tests
+def cleanup_failed_startup_cronjobs(k8s_api_v1_batch):
+    batch_api = k8s_api_v1_batch
+    namespaces = ["pve-cloud-controller", "pxc-controller-ext"]
+
+    for namespace in namespaces:
+        jobs = batch_api.list_namespaced_job(namespace)
+        logger.info(f"Number of jobs in {namespace} - {len(jobs.items)}")
+        for job in jobs.items:
+            if job.status.failed is not None and job.status.failed > 0:
+                logger.info(
+                    f"Deleting failed job {job.metadata.name} in namespace {namespace}"
+                )
+                batch_api.delete_namespaced_job(
+                    name=job.metadata.name,
+                    namespace=namespace,
+                    propagation_policy="Foreground"
+                )
+
+
 @cloud_fixture("controller")
 def controller_scenario(
-    request, get_proxmoxer, get_test_env, get_kubespray_inv, get_k8s_api_v1
+        request, get_proxmoxer, get_test_env, get_kubespray_inv, get_k8s_api_v1, get_k8s_api_v1_batch
 ):
+    cleanup_failed_startup_cronjobs(get_k8s_api_v1_batch)
+
     scenario_name = "controller"
 
     # additional environmental variables for this tf scenario
@@ -269,9 +295,12 @@ def secondary_scenario(
     get_k8s_api_v1,
     get_kubespray_inv,
     get_k8s_secondary_api_v1,
+    get_k8s_secondary_api_v1_batch,
     get_secondary_kubespray_inv,
     set_tf_nginx_rndm_hostname,
 ):
+    cleanup_failed_startup_cronjobs(get_k8s_secondary_api_v1_batch)
+
     scenario_name = "secondary"
 
     # additional environmental variables for this tf scenario
