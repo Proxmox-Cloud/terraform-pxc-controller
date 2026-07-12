@@ -9,8 +9,7 @@ import dns.resolver
 import pytest
 from pve_cloud_test.cloud_fixtures import (cloud_fixture, get_proxmoxer,
                                            get_tdd_version, get_test_env)
-from pve_cloud_test.k8s_fixtures import (get_k8s_api_v1,
-                                         get_k8s_api_v1_batch,
+from pve_cloud_test.k8s_fixtures import (get_k8s_api_v1, get_k8s_api_v1_batch,
                                          get_k8s_secondary_api_v1,
                                          get_k8s_secondary_api_v1_batch,
                                          get_kubespray_inv,
@@ -147,13 +146,18 @@ def cleanup_failed_startup_cronjobs(k8s_api_v1_batch):
                 batch_api.delete_namespaced_job(
                     name=job.metadata.name,
                     namespace=namespace,
-                    propagation_policy="Foreground"
+                    propagation_policy="Foreground",
                 )
 
 
 @cloud_fixture("controller")
 def controller_scenario(
-        request, get_proxmoxer, get_test_env, get_kubespray_inv, get_k8s_api_v1, get_k8s_api_v1_batch
+    request,
+    get_proxmoxer,
+    get_test_env,
+    get_kubespray_inv,
+    get_k8s_api_v1,
+    get_k8s_api_v1_batch,
 ):
     cleanup_failed_startup_cronjobs(get_k8s_api_v1_batch)
 
