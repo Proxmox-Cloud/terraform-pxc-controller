@@ -1,6 +1,6 @@
 locals {
   cloud_controller_image = var.cloud_controller_image == null ? "tobiashvmz/pve-cloud-controller" : var.cloud_controller_image
-  cloud_controller_version = var.cloud_controller_version == null ? "3.3.6" : var.cloud_controller_version
+  cloud_controller_version = var.cloud_controller_version == null ? "3.3.7" : var.cloud_controller_version
 }
 
 variable "cloud_controller_image" {
