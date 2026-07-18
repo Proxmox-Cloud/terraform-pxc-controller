@@ -50,6 +50,19 @@ resource "harbor_project" "docker_hub_cache" {
   force_destroy = true
 }
 
+# k8s io
+resource "harbor_registry" "k8s_io_cache" {
+  provider_name = "docker-hub"
+  name = "k8s io cache"
+  endpoint_url = "https://registry.k8s.io"
+}
+
+resource "harbor_project" "k8s_io_cache" {
+  name = "k8s-io-cache"
+  registry_id = harbor_registry.k8s_io_cache.registry_id
+  force_destroy = true
+}
+
 # full mirror repository, here our proxmox cloud controller will via harbor
 # webhooks create fully standalone mirrored images
 resource "harbor_project" "cloud_mirror" {
