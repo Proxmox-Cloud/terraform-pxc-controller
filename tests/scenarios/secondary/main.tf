@@ -146,39 +146,3 @@ module "ext_pxc_controller" {
 
   log_level = "DEBUG"
 }
-
-
-data "pxc_cloud_secret" "mc_discovery" {
-  secret_name = "mc_discovery"
-}
-
-locals {
-  mc_peers_set = data.pxc_cloud_secret.mc_discovery.secret_data != "" ? toset(jsondecode(data.pxc_cloud_secret.mc_discovery.secret_data).peers) : toset([])
-  mc_token = data.pxc_cloud_secret.mc_discovery.secret_data != "" ? jsondecode(data.pxc_cloud_secret.mc_discovery.secret_data).token : ""
-}
-
-data "pxc_gotify_master" "gotify_master" {
-  mc_peers = local.mc_peers_set
-  mc_token = local.mc_token
-}
-
-
-# debug
-resource "pxc_helm_mirror" "kube_prom_stack" {
-  source_repository = "https://prometheus-community.github.io/helm-charts"
-  source_name = "prom-community"
-  chart = "kube-prometheus-stack"
-  version = "72.9.1"
-}
-
-
-# resource "helm_release" "kube_prom_stack" {
-#   repository = pxc_helm_mirror.kube_prom_stack.repository_out
-#   chart      = pxc_helm_mirror.kube_prom_stack.chart
-
-#   name             = "tigger"
-#   namespace        = "tigger"
-#   create_namespace = true
-
-#   version = pxc_helm_mirror.kube_prom_stack.version
-# }
