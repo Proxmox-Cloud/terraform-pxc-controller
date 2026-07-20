@@ -57,43 +57,9 @@ resource "time_sleep" "wait_for_controller" {
   create_duration = "1m"
 }
 
-resource "pxc_helm_mirror" "openebs" {
-  source_repository = "https://openebs.github.io/openebs"
-  source_name = "openebs"
-  chart = "openebs"
-  version = "4.4.0"
-}
-
-resource "helm_release" "openebs" {
-  repository = pxc_helm_mirror.openebs.repository_out
-  chart = pxc_helm_mirror.openebs.chart
-  version = pxc_helm_mirror.openebs.version
-  name = "openebs"
-  namespace = "openebs"
-  create_namespace = true
-  values = [<<-YAML
-    loki:
-      enabled: false
-    alloy:  
-      enabled: false
-    engines:
-      local:
-        zfs:
-          enabled: false
-        lvm:
-          enabled: false
-        rawfile:
-          enabled: false
-      replicated:
-        mayastor:
-          enabled: false
-  YAML
-  ]
-}
-
 // deploy the client module
 module "tf_monitoring" {
-  depends_on = [ helm_release.openebs, time_sleep.wait_for_controller ]
+  depends_on = [ time_sleep.wait_for_controller ]
   source = "../../../modules/monitoring-client-module"
 
   alertmanager_host = "alrtmgr-secondary.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
@@ -107,7 +73,7 @@ module "tf_monitoring" {
   # for testing
   insecure_tls = true
 
-  victorialogs_sc_name = "openebs-hostpath"
+  victorialogs_sc_name = "openebs-zfspv-zvol"
 
   node_selector = {
     "kubernetes.io/os" = "linux"

@@ -52,7 +52,7 @@ resource "harbor_project" "docker_hub_cache" {
 
 # k8s io
 resource "harbor_registry" "k8s_io_cache" {
-  provider_name = "docker-hub"
+  provider_name = "docker-registry"
   name = "k8s io cache"
   endpoint_url = "https://registry.k8s.io"
 }
