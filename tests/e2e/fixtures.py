@@ -9,15 +9,13 @@ import dns.resolver
 import pytest
 from pve_cloud_test.cloud_fixtures import (cloud_fixture, get_proxmoxer,
                                            get_tdd_version, get_test_env)
-from pve_cloud_test.k8s_fixtures import (get_k8s_api_v1, get_k8s_api_v1_batch,
+from pve_cloud_test.k8s_fixtures import (construct_k0s_ext_hosts_inv,
+                                         get_k8s_api_v1, get_k8s_api_v1_batch,
                                          get_k8s_secondary_api_v1,
                                          get_k8s_secondary_api_v1_batch,
                                          get_kubespray_inv,
                                          get_secondary_kubespray_inv)
 from pve_cloud_test.terraform import apply, destroy, get_mc_gw_http_mock
-
-from pve_cloud_test.k8s_fixtures import construct_k0s_ext_hosts_inv
-
 
 logger = logging.getLogger(__name__)
 
@@ -237,7 +235,7 @@ def deployments_scenario(
             scenario_name,
             get_k8s_api_v1,
             get_test_env,
-            extra_apply_env
+            extra_apply_env,
         )
 
     time.sleep(10)  # ingress dns time
@@ -245,12 +243,7 @@ def deployments_scenario(
     yield {"random_nginx_test_name": set_tf_nginx_rndm_hostname}
 
     with get_mc_gw_http_mock():
-        destroy(
-            "pxc-controller",
-            scenario_name,
-            get_test_env,
-            extra_apply_env
-        )
+        destroy("pxc-controller", scenario_name, get_test_env, extra_apply_env)
 
 
 @cloud_fixture("harbor")
@@ -288,9 +281,7 @@ def harbor_scenario(
 
     yield
 
-    destroy(
-        "pxc-controller", scenario_name, get_test_env, extra_apply_env
-    )
+    destroy("pxc-controller", scenario_name, get_test_env, extra_apply_env)
 
 
 @cloud_fixture("secondary")
@@ -343,7 +334,7 @@ def secondary_scenario(
             "deployments",
             get_k8s_api_v1,
             get_test_env,
-            extra_apply_env
+            extra_apply_env,
         )
 
     yield
