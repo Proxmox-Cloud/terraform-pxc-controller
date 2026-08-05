@@ -868,3 +868,7 @@ def test_mc_gw_get_vclients(get_test_env, controller_scenario):
 
 def test_external_acme_tls(get_test_env, secondary_scenario):
     logger.info("external acme inject test")
+
+
+def test_k0s_provider_connect(k0s_edge_scenario):
+    logger.info("k0s scenario test")

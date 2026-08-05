@@ -16,6 +16,9 @@ from pve_cloud_test.k8s_fixtures import (get_k8s_api_v1, get_k8s_api_v1_batch,
                                          get_secondary_kubespray_inv)
 from pve_cloud_test.terraform import apply, destroy, get_mc_gw_http_mock
 
+from pve_cloud_test.k8s_fixtures import construct_k0s_ext_hosts_inv
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -165,6 +168,8 @@ def controller_scenario(
 
     # additional environmental variables for this tf scenario
     extra_apply_env = {}
+    extra_apply_env["TF_VAR_e2e_kubespray_inv"] = get_kubespray_inv
+
     extra_apply_env["CLOUD_AGE_SSH_KEY_FILE"] = f"{os.getcwd()}/tests/id_ed25519"
 
     ctlr_vers, tdd_ip = get_tdd_version("pve-cloud-controller")
@@ -181,7 +186,6 @@ def controller_scenario(
         scenario_name,
         get_k8s_api_v1,
         get_test_env,
-        get_kubespray_inv,
         extra_apply_env,
     )
 
@@ -193,9 +197,7 @@ def controller_scenario(
     destroy(
         "pxc-controller",
         scenario_name,
-        get_k8s_api_v1,
         get_test_env,
-        get_kubespray_inv,
         extra_apply_env,
     )
 
@@ -223,6 +225,10 @@ def deployments_scenario(
 ):
     scenario_name = "deployments"
 
+    extra_apply_env = {}
+    extra_apply_env["TF_VAR_e2e_kubespray_inv"] = get_kubespray_inv
+    extra_apply_env["TF_VAR_nginx_rnd_hostname"] = set_tf_nginx_rndm_hostname
+
     # multi cloud gateway peer sim
     with get_mc_gw_http_mock():
         # main apply
@@ -231,8 +237,7 @@ def deployments_scenario(
             scenario_name,
             get_k8s_api_v1,
             get_test_env,
-            get_kubespray_inv,
-            {"TF_VAR_nginx_rnd_hostname": set_tf_nginx_rndm_hostname},
+            extra_apply_env
         )
 
     time.sleep(10)  # ingress dns time
@@ -243,10 +248,8 @@ def deployments_scenario(
         destroy(
             "pxc-controller",
             scenario_name,
-            get_k8s_api_v1,
             get_test_env,
-            get_kubespray_inv,
-            {"TF_VAR_nginx_rnd_hostname": set_tf_nginx_rndm_hostname},
+            extra_apply_env
         )
 
 
@@ -256,11 +259,8 @@ def harbor_scenario(
 ):
     scenario_name = "harbor"
 
-    apply(
-        "pxc-controller", scenario_name, get_k8s_api_v1, get_test_env, get_kubespray_inv
-    )
-
     extra_apply_env = {}
+    extra_apply_env["TF_VAR_e2e_kubespray_inv"] = get_kubespray_inv
     extra_apply_env["CLOUD_AGE_SSH_KEY_FILE"] = f"{os.getcwd()}/tests/id_ed25519"
 
     ctlr_vers, tdd_ip = get_tdd_version("pve-cloud-controller")
@@ -272,6 +272,9 @@ def harbor_scenario(
         )
         extra_apply_env["TF_VAR_cloud_controller_version"] = ctlr_vers
 
+    apply(
+        "pxc-controller", scenario_name, get_k8s_api_v1, get_test_env, extra_apply_env
+    )
     # we also need to reapply the controller scenario as the controller module gets
     # secrets by discovery that are set during the harbor scenario
     # todo: only do once with redis key check
@@ -280,14 +283,13 @@ def harbor_scenario(
         "controller",
         get_k8s_api_v1,
         get_test_env,
-        get_kubespray_inv,
         extra_apply_env,
     )
 
     yield
 
     destroy(
-        "pxc-controller", scenario_name, get_k8s_api_v1, get_test_env, get_kubespray_inv
+        "pxc-controller", scenario_name, get_test_env, extra_apply_env
     )
 
 
@@ -323,35 +325,80 @@ def secondary_scenario(
     with get_mc_gw_http_mock():
         # main apply
         # os.environ["TF_VAR_e2e_secondary_kubespray_inv"] = temp_kubespray_inv.name
+        extra_apply_env["TF_VAR_e2e_kubespray_inv"] = get_secondary_kubespray_inv
         apply(
             "pxc-controller",
             scenario_name,
             get_k8s_secondary_api_v1,
             get_test_env,
-            get_secondary_kubespray_inv,
             extra_apply_env,
         )
 
         # after having registered our client we also need to run the deployments scenario again for the master monitoring to pick up on this
         # todo: this could be made faster by first checking if the secrets exist and only
         # applying when they were first created
+        extra_apply_env["TF_VAR_e2e_kubespray_inv"] = get_kubespray_inv
         apply(
             "pxc-controller",
             "deployments",
             get_k8s_api_v1,
             get_test_env,
-            get_kubespray_inv,
-            {"TF_VAR_nginx_rnd_hostname": set_tf_nginx_rndm_hostname},
+            extra_apply_env
         )
 
     yield
 
     with get_mc_gw_http_mock():
+        extra_apply_env["TF_VAR_e2e_kubespray_inv"] = get_secondary_kubespray_inv
         destroy(
             "pxc-controller",
             scenario_name,
-            get_k8s_secondary_api_v1,
             get_test_env,
-            get_secondary_kubespray_inv,
             extra_apply_env,
         )
+
+
+@cloud_fixture("k0s", "k0s-edge")
+def k0s_edge_scenario(
+    request,
+    get_proxmoxer,
+    get_test_env,
+    # we still request the default k8s to satisfy apply methods
+    # but k0s strictly doesnt need it
+    get_kubespray_inv,
+    get_k8s_api_v1,
+):
+    scenario_name = "k0s-edge"
+
+    # additional environmental variables for this tf scenario
+    extra_apply_env = {}
+
+    # write testing kubespray inv and set the path (for provider init)
+    k0s_inv, _ = construct_k0s_ext_hosts_inv(get_test_env)
+    extra_apply_env["TF_VAR_e2e_k0s_ext_hosts_inv"] = k0s_inv
+
+    ctlr_vers, tdd_ip = get_tdd_version("pve-cloud-controller")
+
+    if ctlr_vers:
+        # set controller base image
+        extra_apply_env["TF_VAR_cloud_controller_image"] = (
+            f"{tdd_ip}:5000/pve-cloud-controller"
+        )
+        extra_apply_env["TF_VAR_cloud_controller_version"] = ctlr_vers
+
+    apply(
+        "pxc-controller",
+        scenario_name,
+        get_k8s_api_v1,
+        get_test_env,
+        extra_apply_env,
+    )
+
+    yield
+
+    destroy(
+        "pxc-controller",
+        scenario_name,
+        get_test_env,
+        extra_apply_env,
+    )
