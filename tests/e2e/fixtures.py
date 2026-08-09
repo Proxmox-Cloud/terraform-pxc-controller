@@ -350,12 +350,7 @@ def secondary_scenario(
 
 
 @cloud_fixture("k0s", "k0s-edge")
-def k0s_edge_scenario(
-    request,
-    get_proxmoxer,
-    get_test_env,
-    get_k0s_api_v1
-):
+def k0s_edge_scenario(request, get_proxmoxer, get_test_env, get_k0s_api_v1):
     scenario_name = "k0s-edge"
 
     # additional environmental variables for this tf scenario
