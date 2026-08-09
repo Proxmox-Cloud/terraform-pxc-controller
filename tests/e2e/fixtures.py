@@ -354,10 +354,7 @@ def k0s_edge_scenario(
     request,
     get_proxmoxer,
     get_test_env,
-    # we still request the default k8s to satisfy apply methods
-    # but k0s strictly doesnt need it
-    get_kubespray_inv,
-    get_k8s_api_v1,
+    get_k0s_api_v1
 ):
     scenario_name = "k0s-edge"
 
@@ -380,7 +377,7 @@ def k0s_edge_scenario(
     apply(
         "pxc-controller",
         scenario_name,
-        get_k8s_api_v1,
+        get_k0s_api_v1,
         get_test_env,
         extra_apply_env,
     )
