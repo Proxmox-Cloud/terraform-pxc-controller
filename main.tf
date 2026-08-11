@@ -358,7 +358,7 @@ resource "kubernetes_deployment_v1" "adm_deployment" {
           command           = ["gunicorn"]
           args = [
             "-w", "4",
-            "--threads", "4",
+            "--threads", "8",
             "-b", "0.0.0.0:443",
             "--certfile=/etc/tls/tls.crt",
             "--keyfile=/etc/tls/tls.key",

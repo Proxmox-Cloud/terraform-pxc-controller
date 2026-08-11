@@ -108,7 +108,8 @@ resource "kubernetes_deployment_v1" "mc_gw_deployment" {
           image_pull_policy = "IfNotPresent"
           command           = ["gunicorn"]
           args = [
-            "-w", "2",
+            "-w", "1",
+            "--threads", "4", # gthread for socketio server
             "-b", "0.0.0.0:80",
             "pve_cloud_ctrl.mc_gateway:app"
           ]
