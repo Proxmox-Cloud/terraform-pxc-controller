@@ -174,6 +174,8 @@ module "multi_cloud_gateway" {
       "effect" = "NoSchedule"
      }
   ]
+
+  log_level = "DEBUG"
 }
 
 
