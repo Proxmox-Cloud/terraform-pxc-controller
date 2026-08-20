@@ -99,6 +99,18 @@ variable "victorialogs_extra_helm_values" {
   description = "Extra value that will be added to the victorialogs single db helm deployment. Needs to be a yaml string."
 }
 
+variable "vmauth_config" {
+  type = string
+  default = <<-YAML
+    vmauth:
+      enabled: false
+  YAML
+  description = <<-EOT
+    Values for vmauth subchart passed to victorialogs multilevel. This can be used to create jwt based access restriction / matching to logs.
+    Defaults to disableing the vmauth subchart.
+  EOT
+}
+
 variable "node_selector" {
   type = map(string)
   default = null

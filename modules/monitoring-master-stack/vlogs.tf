@@ -11,6 +11,10 @@ resource "pxc_cloud_secret" "vlogs_storage_node" {
   })
 }
 
+output "vlogs_node_password" {
+  value = random_password.vlogs_storage_node_pw.result
+}
+
 resource "kubernetes_secret" "basic_auth_secret_vlogs" {
   type = "Opaque"
   metadata {
@@ -51,7 +55,7 @@ resource "pxc_helm_mirror" "vlogs_ml" {
   source_repository = "https://victoriametrics.github.io/helm-charts/"
   source_name = "vmetrics"
   chart = "victoria-logs-multilevel"
-  version = "0.0.9"
+  version = "0.2.8"
 }
 
 # replace ingress with oauth / use victoria method?
@@ -66,9 +70,6 @@ resource "helm_release" "vlogs_ml" {
   values = [
     # minimal config for ram optimized usage + nodeport for ssh shell
     <<-YML
-      vmauth:
-        enabled: false
-
       vlselect:
       %{ if var.node_selector != null }
         nodeSelector:
@@ -83,6 +84,7 @@ resource "helm_release" "vlogs_ml" {
           storageNode.username: "vlogs"
           storageNode.password: "${random_password.vlogs_storage_node_pw.result}"
     YML
+    ,var.vmauth_config
     ,yamlencode({
       storageNodes = concat([
         for vlogs_client in jsondecode(data.pxc_cloud_secrets.vlogs_clients.secrets_data) : vlogs_client.host
@@ -102,7 +104,7 @@ resource "pxc_helm_mirror" "vlogs" {
   source_repository = "https://victoriametrics.github.io/helm-charts/"
   source_name = "vmetrics"
   chart = "victoria-logs-single"
-  version = "0.11.26"
+  version = "0.13.9"
 }
 
 resource "helm_release" "vlogs" {
@@ -122,7 +124,7 @@ resource "pxc_helm_mirror" "vmalert" {
   source_repository = "https://victoriametrics.github.io/helm-charts/"
   source_name = "vmetrics"
   chart = "victoria-metrics-alert"
-  version = "0.32.0"
+  version = "0.47.0"
 }
 
 resource "helm_release" "vmalert" {

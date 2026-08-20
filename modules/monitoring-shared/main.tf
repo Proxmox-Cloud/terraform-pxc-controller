@@ -254,15 +254,21 @@ output "vl_single_config" {
       }
     }),
     # minimal config for ram optimized usage + nodeport for ssh shell
+    # also add pve_stack as stream field for general access filtering
     <<-YML
       vector:
         enabled: true
         customConfig:
+          sinks:
+            vlogs:
+              request:
+                headers:
+                  VL-Stream-Fields: stream,kubernetes.pod_name,kubernetes.container_name,kubernetes.pod_namespace,pve_stack
           transforms:
             parser:
               source: |
                 .log = parse_json(.message) ?? .message
-                .pve_stack = "${data.pxc_cloud_self.self.stack_name}"
+                .pve_stack = "${data.pxc_cloud_self.self.stack_name}.${local.cluster_vars.pve_cloud_domain}"
                 del(.message)
       server:
       %{ if var.node_selector != null }

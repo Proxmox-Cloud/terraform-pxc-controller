@@ -29,7 +29,7 @@ resource "pxc_helm_mirror" "vlogs" {
   source_repository = "https://victoriametrics.github.io/helm-charts/"
   source_name = "vmetrics"
   chart = "victoria-logs-single"
-  version = "0.11.26"
+  version = "0.13.9"
 }
 
 resource "helm_release" "vlogs" {
@@ -49,7 +49,7 @@ resource "pxc_helm_mirror" "vmalert" {
   source_repository = "https://victoriametrics.github.io/helm-charts/"
   source_name = "vmetrics"
   chart = "victoria-metrics-alert"
-  version = "0.32.0"
+  version = "0.47.0"
 }
 
 resource "helm_release" "vmalert" {
