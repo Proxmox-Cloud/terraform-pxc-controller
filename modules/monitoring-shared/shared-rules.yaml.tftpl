@@ -5,18 +5,29 @@ defaultRules:
 
 additionalPrometheusRulesMap:
   # in place of the enabled target down rule to filter for the optional flag in labels
+  # pve host jobs are excluded here and covered by the stricter PveHostTargetDown rule
   default-override:
     groups:
       - name: override
         rules:
           - alert: "TargetDown"
             for: "10m"
-            expr: '100 * (count by (cluster, job, namespace, service) (up{optional!="true"} == 0) / count by (cluster, job, namespace, service) (up{optional!="true"})) > 10'
+            expr: '100 * (count by (cluster, job, namespace, service) (up{optional!="true", job!~"pve-node.*|pve-systemd"} == 0) / count by (cluster, job, namespace, service) (up{optional!="true", job!~"pve-node.*|pve-systemd"})) > 10'
             labels:
               severity: critical
             annotations:
               summary: "More than 10 percent of targets are unreachable."
               description: '{{ printf "%.4g" $value }}% of the {{ $labels.job }} targets are down.'
+
+          # for pve host jobs a single downed host must raise an error as soon as it is down for 5 minutes
+          - alert: "PveHostTargetDown"
+            for: "5m"
+            expr: 'up{job=~"pve-node.*|pve-systemd", optional!="true"} == 0'
+            labels:
+              severity: critical
+            annotations:
+              summary: "Proxmox host {{ $labels.host }} target is down."
+              description: "Target {{ $labels.instance }} (job {{ $labels.job }}) on Proxmox host {{ $labels.host }} is unreachable for more than 5 minutes."
   
   # general metrics of pve hosts and vms provided by systemd and node exporter
   pve-cluster-rules:
