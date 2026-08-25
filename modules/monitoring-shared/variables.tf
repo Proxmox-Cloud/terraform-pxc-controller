@@ -86,3 +86,7 @@ variable "node_selector" {
 variable "tolerations" {
   type = list(map(string))
 }
+
+variable "vector_daemonset_memory_limit" {
+  type = string
+}

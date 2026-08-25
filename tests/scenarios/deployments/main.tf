@@ -211,6 +211,22 @@ resource "kubernetes_persistent_volume_claim" "fio_pvc" {
   }
 }
 
+resource "kubernetes_persistent_volume_claim" "fio_pvc_nbd" {
+  metadata {
+    name      = "fio-data-pvc-nbd"
+    namespace = "default"
+  }
+  spec {
+    storage_class_name = "csi-rbd-sc-${local.test_pve_conf["ceph_csi_storage_pool"]}-nbd"
+    access_modes = ["ReadWriteOnce"]
+    resources {
+      requests = {
+        storage = "10Gi"
+      }
+    }
+  }
+}
+
 # Define the Pod
 resource "kubernetes_pod" "fio_tester" {
   metadata {
@@ -232,6 +248,11 @@ resource "kubernetes_pod" "fio_tester" {
         name       = "fio-storage"
         mount_path = "/mnt/fio"
       }
+
+      volume_mount {
+        name       = "fio-storage-nbd"
+        mount_path = "/mnt/fio-nbd"
+      }
     }
 
     volume {
@@ -240,5 +261,13 @@ resource "kubernetes_pod" "fio_tester" {
         claim_name = kubernetes_persistent_volume_claim.fio_pvc.metadata[0].name
       }
     }
+
+    volume {
+      name = "fio-storage-nbd"
+      persistent_volume_claim {
+        claim_name = kubernetes_persistent_volume_claim.fio_pvc_nbd.metadata[0].name
+      }
+    }
+
   }
 }

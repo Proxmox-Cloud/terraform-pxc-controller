@@ -26,6 +26,7 @@ module "mon_shared" {
   victorialogs_k8s_override_expressions = var.victorialogs_k8s_override_expressions
   victorialogs_systemd_override_expressions = var.victorialogs_systemd_override_expressions
   victorialogs_extra_helm_values = var.victorialogs_extra_helm_values
+  vector_daemonset_memory_limit = var.vector_daemonset_memory_limit
 
   tolerations = var.tolerations
   node_selector = var.node_selector

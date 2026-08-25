@@ -106,3 +106,9 @@ variable "logging_only" {
   default = false
   description = "Turns off alerting features and only funnels logs to the master cloud monitoring stack."
 }
+
+variable "vector_daemonset_memory_limit" {
+  type = string
+  default = "128Mi"
+  description = "Kubernetes conform memory limit specification for the vector log collector daemonset."
+}

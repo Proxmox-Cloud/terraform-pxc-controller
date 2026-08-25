@@ -258,6 +258,9 @@ output "vl_single_config" {
     <<-YML
       vector:
         enabled: true
+        resources:
+          limits:
+            memory: "${var.vector_daemonset_memory_limit}"
         customConfig:
           sinks:
             vlogs:
