@@ -46,6 +46,7 @@ variable "victorialogs_host" {
   description = "Host to expxose victorialogs under, this will be picked up by the master stack and the multilevel chart for aggregated log search."
 }
 
+# todo: this is probably not needed as we dynamically collect and tolerate all node taints
 variable "victorialogs_vector_tolerations" {
   type = list(any)
   description = "Extra tolerations for vector log collector daemonset."

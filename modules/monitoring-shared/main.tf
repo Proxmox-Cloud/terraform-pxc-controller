@@ -163,17 +163,6 @@ output "rules" {
     }) : "{}"
 }
 
-
-locals {
-  vector_control_plane_tolerations = [
-    {
-      key = "node-role.kubernetes.io/control-plane"
-      operator = "Exists"
-      effect = "NoSchedule"
-    }
-  ]
-}
-
 output "tolerations_snippet" {
   value = <<-YAML
     %{ if var.node_selector != null || var.tolerations != null }
@@ -246,11 +235,33 @@ output "tolerations_snippet" {
   YAML
 }
 
+data "kubernetes_nodes" "all" {}
+
+locals {
+  vect_tolerations = distinct(flatten([
+    for node in data.kubernetes_nodes.all.nodes : [
+      for taint in node.spec[0].taints : {
+        key      = taint.key
+        operator = taint.value != null && taint.value != "" ? "Equal" : "Exists"
+        value    = taint.value
+        effect   = taint.effect
+      }
+    ]
+  ]))
+  vector_control_plane_tolerations = [
+    {
+      key = "node-role.kubernetes.io/control-plane"
+      operator = "Exists"
+      effect = "NoSchedule"
+    }
+  ]
+}
+
 output "vl_single_config" {
   value = [
     yamlencode({
       vector = {
-        tolerations = flatten([local.vector_control_plane_tolerations, var.victorialogs_vector_tolerations])
+        tolerations = flatten([local.vector_control_plane_tolerations, var.victorialogs_vector_tolerations, local.vect_tolerations])
       }
     }),
     # minimal config for ram optimized usage + nodeport for ssh shell
@@ -311,7 +322,8 @@ output "vl_single_config" {
 
 locals {
   # base generic filter for catching errors, this will be overwritten by more speicific rules
-  error_base_filter = "(i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault))"
+  # excludes logs that were successfully parsed via a log parser and contain the log level info
+  error_base_filter = "!level: i(info) AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault))"
 
   # for some generic namespaces we define overwrites here, this only works though for deployments that are part of proxmox clouds core deployments
   k8s_ns_specific_base_expressions = {
