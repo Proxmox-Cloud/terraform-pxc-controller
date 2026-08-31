@@ -275,6 +275,12 @@ output "vl_single_config" {
         customConfig:
           sinks:
             vlogs:
+              # this reduction + the madvise setting for transparent_hugepage keeps vector
+              # memory usage within limits, kubernetes can produce tons of logs, leading to unstable usage
+              buffer:
+                type: memory
+                max_events: 100
+                when_full: drop_newest
               request:
                 headers:
                   VL-Stream-Fields: stream,kubernetes.pod_name,kubernetes.container_name,kubernetes.pod_namespace,pve_stack
