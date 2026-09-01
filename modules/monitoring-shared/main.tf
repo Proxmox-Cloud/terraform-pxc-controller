@@ -287,9 +287,45 @@ output "vl_single_config" {
           transforms:
             parser:
               source: |
-                .log = parse_json(.message) ?? .message
                 .pve_stack = "${data.pxc_cloud_self.self.stack_name}.${local.cluster_vars.pve_cloud_domain}"
-                del(.message)
+
+                # look for docs in vector conf of pxc collection role vector_journald_exporter
+                str_message = to_string(.message) ?? ""
+
+                if str_message == "" {
+                  .parsed = { "failed": true }
+                  .vparser = "empty"
+                } else if match(str_message, r'^\{') {
+                  .parsed = parse_json(.message) ?? { "failed": true }
+                  .vparser = "json"
+                }  else if match(str_message, r'^[IWEF]\d{4}') {
+                  .parsed = parse_klog(str_message) ?? { "failed": true }
+                  .vparser = "klog"
+                } else if match(str_message, r'^[A-Za-z_][A-Za-z0-9_.-]*=') {
+                  .parsed = parse_logfmt(str_message) ?? { "failed": true }
+                  .vparser = "logfmt"
+                } else {
+                  # finally try parsing with nginx log parsers, default to failed + none
+                  nginx_parsed = parse_nginx_log(str_message, "ingress_upstreaminfo") ??
+                                parse_nginx_log(str_message, "combined") ??
+                                null
+                  if nginx_parsed != null {
+                    .parsed = nginx_parsed
+                    .vparser = "nginx"
+                  } else {
+                    .parsed = { "failed": true }
+                    .vparser = "none"
+                  }
+                }
+
+                if exists(.parsed.level) {
+                  .level = .parsed.level
+                } else if exists(.parsed.severity) {
+                  .level = .parsed.severity
+                } else {
+                  .level = "unknown"
+                }
+
       server:
       %{ if var.node_selector != null }
         nodeSelector:
