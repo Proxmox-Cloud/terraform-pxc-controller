@@ -119,3 +119,12 @@ module "harbor_mirror_projects" {
   harbor_host = local.harbor_host
 }
 ```
+
+## Logging / Monitoring
+
+The submodules for monitoring contain the central pxc log databases (victorialogs) aswell as k8s log collectors (vector.dev). Once a master stack is deployed, playbooks will also pick up on the presence of the logging database and setup vector log collectors on proxmox host, lxc and vm level.
+
+The logging setup is highly tuned towards saving memory in favour of using a little bit more cpu and tolerance for loosing logs on vector restarts (`read_from: end` configuration).
+
+For running the log collectors on non pxc kubernetes systems, you can save further memory by setting kernel hugepage behaviour to madvise as opposed to always (clusters deployed by the collection set this automatically).
+

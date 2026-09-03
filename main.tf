@@ -794,7 +794,7 @@ resource "kubernetes_job_v1" "init_job" {
   }
 
   metadata {
-    name      = "pve-cloud-init"
+    name      = "pve-cloud-init-${local.cloud_controller_version}"
     namespace = kubernetes_namespace.pve_cloud_controller.metadata[0].name
     labels = {
       "app.kubernetes.io/name"    = "pve-cloud-init"

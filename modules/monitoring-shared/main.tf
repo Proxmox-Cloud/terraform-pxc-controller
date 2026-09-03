@@ -272,18 +272,13 @@ output "vl_single_config" {
         resources:
           limits:
             memory: "${var.vector_daemonset_memory_limit}"
+        env:
+          # tweak rust jemalloc, small cpu increase for massive ram save
+          - name: MALLOC_CONF
+            value: "dirty_decay_ms:1000"
         customConfig:
-          sources:
-            k8s:
-              read_from: end # further limit memory usage, don't spike memory by reading big old files
           sinks:
             vlogs:
-              # this reduction + the madvise setting for transparent_hugepage keeps vector
-              # memory usage within limits, kubernetes can produce tons of logs, leading to unstable usage
-              buffer:
-                type: memory
-                max_events: 100 # lower the buffer and handle overflow via metrics
-                when_full: drop_newest
               request:
                 headers:
                   VL-Stream-Fields: stream,kubernetes.pod_name,kubernetes.container_name,kubernetes.pod_namespace,pve_stack
