@@ -128,3 +128,12 @@ The logging setup is highly tuned towards saving memory in favour of using a lit
 
 For running the log collectors on non pxc kubernetes systems, you can save further memory by setting kernel hugepage behaviour to madvise as opposed to always (clusters deployed by the collection set this automatically).
 
+## Terraform mirroring
+
+By deploying the `terraform-boring-mirror` submodule into your cloud, you unlock automatic mirroring for terraform providers.
+
+You will need to provide the underlying boring registry an s3 bucket to store mirrored providers, for that we recommend the silo minio fork.
+
+Again using discovery mechanisms the pxc provider will configure your local users work environment to use the boring mirror via the `network_mirror` functionality in its home dirs `~/.terraformrc` configuration file.
+
+
