@@ -378,6 +378,7 @@ locals {
   k8s_ns_filter = "kubernetes.pod_namespace:* and !kubernetes.pod_namespace: IN(${join(", ", [for ns in local.k8s_base_exclude_ns : "\"${ns}\""])})"
 
   # do the same for journald services
+  # todo: the PRIORITY filter is probably not needed anymore since we do parsing in vector
   journald_service_specific_base_expressions = {
     # named errors use syslogs priorities, anything below 5 is warning / error / critical
     "named.service" = "_SYSTEMD_UNIT: named.service and PRIORITY: <=4"

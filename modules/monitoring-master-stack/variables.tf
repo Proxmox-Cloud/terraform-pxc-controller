@@ -128,3 +128,9 @@ variable "vector_daemonset_memory_limit" {
   default = "256Mi"
   description = "Kubernetes conform memory limit specification for the vector log collector daemonset."
 }
+
+variable "vmalert_eval_interval" {
+  type = string
+  default = "1m"
+  description = "How often log rules are evaluated, can be increased to save cpu."
+}

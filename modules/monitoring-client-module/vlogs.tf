@@ -76,6 +76,8 @@ resource "helm_release" "vmalert" {
         notifier:
           alertmanager:
             url: "http://kube-prometheus-stack-alertmanager:9093"
+        extraArgs:
+          evaluationInterval: ${var.vmalert_eval_interval}
     YML
     , module.mon_shared.log_rules
   ]
