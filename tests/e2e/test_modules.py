@@ -543,7 +543,7 @@ def test_monitoring_alert_rules(get_test_env, deployments_scenario):
         if severity == "critical" and alert["labels"]["alertname"] not in [
             "KubeAPIErrorBudgetBurn",
             "haproxy all backends down",
-            "Errors Critical",
+            "Errors High",
             "cpu temperature high",
         ]:
             logger.error(alert)

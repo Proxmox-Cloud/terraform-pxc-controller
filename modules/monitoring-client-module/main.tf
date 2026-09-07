@@ -28,6 +28,10 @@ module "mon_shared" {
   victorialogs_extra_helm_values = var.victorialogs_extra_helm_values
   vector_daemonset_memory_limit = var.vector_daemonset_memory_limit
 
+  # external vlogs target conf
+  external_pxc_vlogs_host = var.external_pxc_vlogs_host
+  external_pxc_vlogs_auth = data.pxc_vlselect_auth.vlselect_master.vlselect_auth_password # uses central basic auth
+
   tolerations = var.tolerations
   node_selector = var.node_selector
 }

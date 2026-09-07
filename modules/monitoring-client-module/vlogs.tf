@@ -17,6 +17,8 @@ resource "kubernetes_secret" "basic_auth_secret_vlogs" {
 }
 
 resource "pxc_cloud_secret" "vlogs_discovery" {
+  # no vlogs db deployed => disable client discovery
+  count = var.external_pxc_vlogs_host == null ? 1 : 0
   secret_name = "${data.pxc_cloud_self.self.stack_name}.${data.pxc_cloud_self.self.target_pve}-vlogs"
   secret_data = jsonencode({
     host = var.victorialogs_host
@@ -53,7 +55,9 @@ resource "pxc_helm_mirror" "vmalert" {
 }
 
 resource "helm_release" "vmalert" {
-  count = var.logging_only ? 0 : 1 # no alerts when flag is true
+  # no alerts when either toggled of or our log target is an external pxc vlogs db
+  # in the latter case the external deployment will take care of generating alerts
+  count = var.logging_only || var.external_pxc_vlogs_host != null ? 0 : 1
   repository = pxc_helm_mirror.vmalert.repository_out
   chart = pxc_helm_mirror.vmalert.chart
   version = pxc_helm_mirror.vmalert.version

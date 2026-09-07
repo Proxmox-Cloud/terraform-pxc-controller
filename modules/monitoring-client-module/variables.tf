@@ -6,6 +6,7 @@ variable "alertmanager_host" {
 variable "victorialogs_host" {
   type = string
   description = "Host to expxose victorialogs under, this will be picked up by the master stack and the multilevel chart for aggregated log search."
+  default = null # can be null if using external vlogs db
 }
 
 variable "victorialogs_sc_name" {
@@ -117,4 +118,10 @@ variable "vmalert_eval_interval" {
   type = string
   default = "1m"
   description = "How often log rules are evaluated, can be increased to save cpu."
+}
+
+variable "external_pxc_vlogs_host" {
+  type = string
+  default = null
+  description = "Hostname of victorialogs single db. Will take the central master stacks basic auth credentials from linked clouds."
 }

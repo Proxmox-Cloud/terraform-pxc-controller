@@ -29,6 +29,9 @@ module "mon_shared" {
   victorialogs_extra_helm_values = var.victorialogs_extra_helm_values
   vector_daemonset_memory_limit = var.vector_daemonset_memory_limit
 
+  external_pxc_vlogs_host = null # master stack never uses an external vlogs db
+  external_pxc_vlogs_auth = null
+
   tolerations = var.tolerations
   node_selector = var.node_selector
 }

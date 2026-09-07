@@ -323,7 +323,11 @@ output "vl_single_config" {
                 } else {
                   .level = "unknown"
                 }
-
+      YML
+    ,
+    # default deploy vlogs db, dont deploy it if extern is set
+    var.external_pxc_vlogs_host == null ?
+    <<-YML
       server:
       %{ if var.node_selector != null }
         nodeSelector:
@@ -355,7 +359,21 @@ output "vl_single_config" {
               hosts:
                 - ${var.victorialogs_host}
     YML
-    , var.victorialogs_extra_helm_values
+    : <<-YML
+      server:
+        enabled: false
+      vector:
+        customConfig:
+          sinks:
+            vlogs:
+              endpoints:
+                - https://${var.external_pxc_vlogs_host}/insert/elasticsearch
+              auth:
+                strategy: basic
+                user: "vlogs"
+                password: "${var.external_pxc_vlogs_auth}"
+    YML
+    , var.victorialogs_extra_helm_values,
   ]
 }
 
