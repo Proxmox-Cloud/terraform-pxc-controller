@@ -235,33 +235,11 @@ output "tolerations_snippet" {
   YAML
 }
 
-data "kubernetes_nodes" "all" {}
-
-locals {
-  vect_tolerations = distinct(flatten([
-    for node in data.kubernetes_nodes.all.nodes : [
-      for taint in node.spec[0].taints : {
-        key      = taint.key
-        operator = taint.value != null && taint.value != "" ? "Equal" : "Exists"
-        value    = taint.value
-        effect   = taint.effect
-      }
-    ]
-  ]))
-  vector_control_plane_tolerations = [
-    {
-      key = "node-role.kubernetes.io/control-plane"
-      operator = "Exists"
-      effect = "NoSchedule"
-    }
-  ]
-}
-
 output "vl_single_config" {
   value = [
     yamlencode({
       vector = {
-        tolerations = flatten([local.vector_control_plane_tolerations, var.victorialogs_vector_tolerations, local.vect_tolerations])
+        tolerations = var.victorialogs_vector_tolerations
       }
     }),
     # minimal config for ram optimized usage + nodeport for ssh shell
