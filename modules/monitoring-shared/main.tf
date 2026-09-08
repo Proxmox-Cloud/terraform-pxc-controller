@@ -272,6 +272,8 @@ output "vl_single_config" {
         resources:
           limits:
             memory: "${var.vector_daemonset_memory_limit}"
+          requests:
+            memory: "${var.vector_daemonset_memory_request}"
         env:
           # tweak rust jemalloc, small cpu increase for massive ram save
           - name: MALLOC_CONF

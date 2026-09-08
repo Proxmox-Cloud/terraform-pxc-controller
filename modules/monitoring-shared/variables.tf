@@ -92,6 +92,10 @@ variable "vector_daemonset_memory_limit" {
   type = string
 }
 
+variable "vector_daemonset_memory_request" {
+  type = string
+}
+
 variable "external_pxc_vlogs_host" {
   type = string
 }

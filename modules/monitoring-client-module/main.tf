@@ -27,6 +27,7 @@ module "mon_shared" {
   victorialogs_systemd_override_expressions = var.victorialogs_systemd_override_expressions
   victorialogs_extra_helm_values = var.victorialogs_extra_helm_values
   vector_daemonset_memory_limit = var.vector_daemonset_memory_limit
+  vector_daemonset_memory_request = var.vector_daemonset_memory_request
 
   # external vlogs target conf
   external_pxc_vlogs_host = var.external_pxc_vlogs_host
