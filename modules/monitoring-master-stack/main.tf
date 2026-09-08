@@ -28,6 +28,7 @@ module "mon_shared" {
   victorialogs_systemd_override_expressions = var.victorialogs_systemd_override_expressions
   victorialogs_extra_helm_values = var.victorialogs_extra_helm_values
   vector_daemonset_memory_limit = var.vector_daemonset_memory_limit
+  vector_daemonset_memory_request = var.vector_daemonset_memory_request
 
   external_pxc_vlogs_host = null # master stack never uses an external vlogs db
   external_pxc_vlogs_auth = null
