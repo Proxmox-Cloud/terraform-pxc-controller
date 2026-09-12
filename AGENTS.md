@@ -1,6 +1,6 @@
 # terraform-pxc-controller
 
-> **Always load the workspace parent `AGENTS.md` first** (`../AGENTS.md`) before working in this repository. It contains shared environment setup, test conventions, and repository scope rules that apply across all pve-cloud repos.
+**Always load the workspace parent `AGENTS.md` first** (`../AGENTS.md`) - the environment setup instructions in there need to be executed from the directory of the parent!
 
 ## Main module (repo root)
 
