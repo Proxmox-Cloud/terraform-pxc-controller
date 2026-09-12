@@ -1,5 +1,7 @@
 # terraform-pxc-controller
 
+> **Always load the workspace parent `AGENTS.md` first** (`../AGENTS.md`) before working in this repository. It contains shared environment setup, test conventions, and repository scope rules that apply across all pve-cloud repos.
+
 ## Main module (repo root)
 
 Deploys the Proxmox Cloud controller on Kubernetes: controller/admission deployments, namespace & pod watchers, DNS sync cron job, init job, and cluster-admin RBAC binding. Handles internal ingress DNS (PVE BIND), optional external ingress DNS (Route53 via `route53_*` vars), TLS certificate injection into namespaces (CA + `cluster-tls` secret in `tls.tf`), and optional harbor mirror-credentials injection (pull secret, `exclude_mirror_namespaces`).
