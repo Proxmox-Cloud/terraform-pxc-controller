@@ -35,8 +35,6 @@ You should always assume that there is a already deployed test system running an
 
 ### Custom pytest CLI options
 
-Defined in `pytest-pve-cloud/src/pve_cloud_test/options.py` (loaded via `pytest_plugins` in each e2e `conftest.py`):
-
 | Option | Effect |
 |---|---|
 | `--skip-cleanup` | Skips fixture and test teardown, keeps infra state for consecutive runs |
