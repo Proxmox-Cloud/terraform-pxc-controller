@@ -1,6 +1,6 @@
 # terraform-pxc-controller
 
-**Always load the workspace parent `AGENTS.md` first** (`../AGENTS.md`) - the environment setup instructions in there need to be executed from the directory of the parent!
+**Always load the workspace parent `AGENTS.md` first** (`../AGENTS.md`) - commands like `source .envrc` mentioned in the file need to be executed from the directory of the parent!
 
 ## Main module (repo root)
 
