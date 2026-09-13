@@ -2,10 +2,10 @@
 
 ## Environment Setup
 
-**Always source `.envrc` from the parent and the Python virtual environment as the very first step before running any other commands.** This sets all required environment variables including `ANSIBLE_COLLECTIONS_PATH`, test config paths, and activates the Python virtual environment:
+**Always source `.envrc` and the Python virtual environment as the very first step before running any other commands.** This sets all required environment variables including `ANSIBLE_COLLECTIONS_PATH`, test config paths, and activates the Python virtual environment:
 
 ```bash
-source ../.envrc
+source .envrc
 source ~/.pve-cloud-dev-venv/bin/activate
 ```
 
@@ -23,10 +23,9 @@ pytest
 tddog
 ```
 
-
 ## Running Tests / Validation
 
-For testing you should primary rely on the e2e testing suite of this project.
+After you made your changes you should always validate them with the e2e testing suite available.
 
 Always pass the flag `--skip-cleanup` to any `pytest` command you execute. Tests always live in the `tests/e2e` folder and are run from the repositories root directory.
 
