@@ -1,51 +1,5 @@
 # terraform-pxc-controller
 
-## Environment Setup
-
-**Always source `.envrc` and the Python virtual environment as the very first step before running any other commands.** This sets all required environment variables including `ANSIBLE_COLLECTIONS_PATH`, test config paths, and activates the Python virtual environment:
-
-```bash
-source .envrc
-source ~/.pve-cloud-dev-venv/bin/activate
-```
-
-## Python & Ansible Environment
-
-With the virtual environment activated, all Python commands including `python`, `pip`, `ansible`, `ansible-playbook`, and `ansible-galaxy` are available directly. For example:
-
-```bash
-python
-pip
-ansible
-ansible-playbook
-ansible-galaxy
-pytest
-tddog
-```
-
-## Running Tests / Validation
-
-After you made your changes you should always validate them with the e2e testing suite available.
-
-Always pass the flag `--skip-cleanup` to any `pytest` command you execute. Tests always live in the `tests/e2e` folder and are run from the repositories root directory.
-
-**Only run the needed tests.** Our custom pytest cli options provide the ability to skip fixtures / tags of playbooks that are not needed to validate a change. Always target the most fitting test functions (never the whole folder) and trim fixture execution with the custom tag CLI options.
-
-You should always assume that there is a already deployed test system running and that you only work on specific features.
-
-### Custom pytest CLI options
-
-| Option | Effect |
-|---|---|
-| `--skip-cleanup` | Skips fixture and test teardown, keeps infra state for consecutive runs |
-| `--skip-fixtures` | Skips all fixtures entirely, runs tests against already deployed infra |
-| `--fixture-tags a,b` | Only executes `cloud_fixture` fixtures tagged with at least one of a,b |
-| `--skip-fixture-tags a,b` | Skips `cloud_fixture` fixtures tagged with at least one of a,b (exclusive with `--fixture-tags`) |
-| `--runner-tags a,b` | Passes `--tags` to ansible playbooks run inside fixtures |
-| `--skip-runner-tags a,b` | Passes `--skip-tags` to ansible playbooks (exclusive with `--runner-tags`) |
-| `--ansible-verbosity 1..3` | ansible runner log verbosity (default 0) |
-
-
 ## Main module (repo root)
 
 Deploys the Proxmox Cloud controller on Kubernetes: controller/admission deployments, namespace & pod watchers, DNS sync cron job, init job, and cluster-admin RBAC binding. Handles internal ingress DNS (PVE BIND), optional external ingress DNS (Route53 via `route53_*` vars), TLS certificate injection into namespaces (CA + `cluster-tls` secret in `tls.tf`), and optional harbor mirror-credentials injection (pull secret, `exclude_mirror_namespaces`).
@@ -134,3 +88,4 @@ pytest -s tests/e2e/test_modules.py::test_k0s_provider_connect --skip-cleanup --
 # re-run test logic only, against fully deployed infra
 pytest -s tests/e2e/test_modules.py::test_ingress_dns --skip-cleanup --skip-fixtures
 ```
+
