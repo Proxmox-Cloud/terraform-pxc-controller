@@ -98,7 +98,7 @@ resource "helm_release" "kube_prom_stack" {
       grafana = var.grafana_subchart_values
     }), # custom values for grafana config (oidc pass)
     module.mon_shared.tolerations_snippet,
-    var.logging_only ? "{}" : yamlencode({
+    var.disable_alerting ? "{}" : yamlencode({
       alertmanager = {
         # expose alertmanager via ingress for karma in master stack to fetch
         ingress = {

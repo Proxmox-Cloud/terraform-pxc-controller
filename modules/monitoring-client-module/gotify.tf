@@ -8,7 +8,7 @@ data "pxc_gotify_master" "gotify_master" {
 
 # create application in gotify for notifications of the master k8s stack
 resource "pxc_gotify_app" "client_app" {
-  count = var.logging_only ? 0 : 1
+  count = var.disable_alerting ? 0 : 1
   gotify_host = data.pxc_gotify_master.gotify_master.gotify_host
   gotify_admin_pw = data.pxc_gotify_master.gotify_master.gotify_password
   app_name = "${data.pxc_cloud_self.self.stack_name}.${data.pxc_cloud_self.self.target_pve}"
@@ -17,7 +17,7 @@ resource "pxc_gotify_app" "client_app" {
 
 # converts alertmanager receiver hook format to gotify post
 resource "kubernetes_deployment" "alertmanager_gotify_bridge" {
-  count = var.logging_only ? 0 : 1
+  count = var.disable_alerting ? 0 : 1
   metadata {
     name      = "alertmanager-gotify"
     namespace = helm_release.kube_prom_stack.namespace

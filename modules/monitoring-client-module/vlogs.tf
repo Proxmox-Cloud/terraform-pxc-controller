@@ -57,7 +57,7 @@ resource "pxc_helm_mirror" "vmalert" {
 resource "helm_release" "vmalert" {
   # no alerts when either toggled of or our log target is an external pxc vlogs db
   # in the latter case the external deployment will take care of generating alerts
-  count = var.logging_only || var.external_pxc_vlogs_host != null ? 0 : 1
+  count = var.disable_alerting || var.external_pxc_vlogs_host != null ? 0 : 1
   repository = pxc_helm_mirror.vmalert.repository_out
   chart = pxc_helm_mirror.vmalert.chart
   version = pxc_helm_mirror.vmalert.version

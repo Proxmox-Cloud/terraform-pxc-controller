@@ -102,10 +102,10 @@ variable "tolerations" {
   description = "Tolerations to add to all controller deployments/jobs."
 }
 
-variable "logging_only" {
+variable "disable_alerting" {
   type = bool
   default = false
-  description = "Turns off alerting features and only funnels logs to the master cloud monitoring stack."
+  description = "Disables alerting features and only funnels logs to the master cloud monitoring stack."
 }
 
 variable "vector_daemonset_memory_limit" {
