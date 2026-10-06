@@ -91,4 +91,7 @@ module "tf_monitoring" {
   insecure_tls = true
 
   external_pxc_vlogs_host = "vlogs.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
+
+  # test only logging system alerts
+  k8s_log_alert_level = "SYSTEM"
 }
