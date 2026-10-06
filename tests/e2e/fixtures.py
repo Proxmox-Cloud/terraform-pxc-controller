@@ -129,20 +129,40 @@ def get_moto_client(get_test_env, get_proxmoxer, controller_scenario):
     return client
 
 
-# when booting up the testing system cron jobs sometimes fail
-# due to unmet startup conditions, that are harmless
-# we clean them up once before running tests
-def cleanup_failed_startup_cronjobs(k8s_api_v1_batch):
+def has_image_pull_backoff(namespace, job_name, core_v1_api):
+    pods = core_v1_api.list_namespaced_pod(
+        namespace=namespace, label_selector=f"job-name={job_name}"
+    )
+    for pod in pods.items:
+        if pod.status.container_statuses:
+            for container_status in pod.status.container_statuses:
+                if (
+                    container_status.state
+                    and container_status.state.waiting
+                    and container_status.state.waiting.reason == "ImagePullBackOff"
+                ):
+                    return True
+    return False
+
+
+def cleanup_failed_startup_cronjobs(k8s_api_v1_batch, k8s_api_v1):
     batch_api = k8s_api_v1_batch
-    namespaces = ["pve-cloud-controller", "pxc-controller-ext"]
+    core_api = k8s_api_v1
+    namespaces = ["pve-cloud-controller", "pxc-controller-ext", "pve-cloud-backup"]
 
     for namespace in namespaces:
         jobs = batch_api.list_namespaced_job(namespace)
         logger.info(f"Number of jobs in {namespace} - {len(jobs.items)}")
         for job in jobs.items:
+            should_delete = False
             if job.status.failed is not None and job.status.failed > 0:
+                should_delete = True
+            elif has_image_pull_backoff(namespace, job.metadata.name, core_api):
+                should_delete = True
+
+            if should_delete:
                 logger.info(
-                    f"Deleting failed job {job.metadata.name} in namespace {namespace}"
+                    f"Deleting job {job.metadata.name} in namespace {namespace}"
                 )
                 batch_api.delete_namespaced_job(
                     name=job.metadata.name,
@@ -160,7 +180,7 @@ def controller_scenario(
     get_k8s_api_v1,
     get_k8s_api_v1_batch,
 ):
-    cleanup_failed_startup_cronjobs(get_k8s_api_v1_batch)
+    cleanup_failed_startup_cronjobs(get_k8s_api_v1_batch, get_k8s_api_v1)
 
     scenario_name = "controller"
 
@@ -296,7 +316,7 @@ def secondary_scenario(
     get_secondary_kubespray_inv,
     set_tf_nginx_rndm_hostname,
 ):
-    cleanup_failed_startup_cronjobs(get_k8s_secondary_api_v1_batch)
+    cleanup_failed_startup_cronjobs(get_k8s_secondary_api_v1_batch, get_k8s_secondary_api_v1)
 
     scenario_name = "secondary"
 
