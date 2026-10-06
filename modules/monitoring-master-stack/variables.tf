@@ -37,9 +37,10 @@ variable "extra_alert_rules" {
   default = {}
 }
 
-variable "grafana_subchart_values" {
-  type = any
-  default = {}
+variable "kube_prom_stack_extra_helm_values" {
+  type = string
+  default = "{}"
+  description = "Extra values that will be added to the kube-prometheus-stack helm deployment. Needs to be a yaml string."
 }
 
 variable "external_karma_alertmanagers" {

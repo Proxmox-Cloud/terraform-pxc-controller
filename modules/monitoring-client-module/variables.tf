@@ -26,9 +26,10 @@ variable "victorialogs_vector_tolerations" {
   default =  []
 }
 
-variable "grafana_subchart_values" {
-  type = any
-  default = {}
+variable "kube_prom_stack_extra_helm_values" {
+  type = string
+  default = "{}"
+  description = "Extra values that will be added to the kube-prometheus-stack helm deployment. Needs to be a yaml string."
 }
 
 variable "monitor_proxmox_cluster" {
