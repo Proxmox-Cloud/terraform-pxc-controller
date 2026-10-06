@@ -103,3 +103,13 @@ variable "external_pxc_vlogs_host" {
 variable "external_pxc_vlogs_auth" {
   type = string
 }
+
+variable "k8s_log_alert_level" {
+  type = string
+  default = "ALL"
+  description = "Controls k8s log alerting scope: ALL (all namespaces), SYSTEM (k8s + Proxmox system namespaces only), DISABLED (no k8s alerts)."
+  validation {
+    condition     = contains(["ALL", "SYSTEM", "DISABLED"], var.k8s_log_alert_level)
+    error_message = "Must be ALL, SYSTEM, or DISABLED."
+  }
+}

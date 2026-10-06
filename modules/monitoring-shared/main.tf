@@ -363,6 +363,19 @@ locals {
   # excludes logs that were successfully parsed via a log parser and contain the log level info
   error_base_filter = "!level: i(info) AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault))"
 
+  # system namespaces for SYSTEM alert level mode
+  k8s_system_namespaces = [
+    "kube-system",
+    "kube-public",
+    "kube-node-lease",
+    "pve-cloud-controller",
+    "pve-cloud-monitoring-master",
+    "pve-cloud-monitoring-client",
+    "nginx-ingress",
+    "ceph-csi",
+    "openebs"
+  ]
+
   # for some generic namespaces we define overwrites here, this only works though for deployments that are part of proxmox clouds core deployments
   k8s_ns_specific_base_expressions = {
     "nginx-ingress" = "kubernetes.pod_namespace: \"nginx-ingress\" and stream: \"stderr\""
@@ -371,9 +384,24 @@ locals {
     "kube-system" = "${local.error_base_filter} AND !\"falling back\" AND !~\"W\\\\d+\\\\s.*addrConn.createTransport\" AND kubernetes.pod_namespace: \"kube-system\""
   }
 
-  # here we build the filter for the default rules
-  k8s_base_exclude_ns = concat(keys(local.k8s_ns_specific_base_expressions), keys(var.victorialogs_k8s_override_expressions))
-  k8s_ns_filter = "kubernetes.pod_namespace:* and !kubernetes.pod_namespace: IN(${join(", ", [for ns in local.k8s_base_exclude_ns : "\"${ns}\""])})"
+  # build system namespace filter for SYSTEM mode
+  k8s_system_ns_filter = "kubernetes.pod_namespace: IN(${join(", ", [for ns in local.k8s_system_namespaces : "\"${ns}\""])})"
+
+  # build non-system namespace filter (for ALL mode exclusions)
+  # includes system namespaces + specific overrides + user overrides
+  k8s_non_system_ns = concat(
+    local.k8s_system_namespaces,
+    keys(local.k8s_ns_specific_base_expressions),
+    keys(var.victorialogs_k8s_override_expressions)
+  )
+  k8s_ns_filter = "kubernetes.pod_namespace:* and !kubernetes.pod_namespace: IN(${join(", ", [for ns in local.k8s_non_system_ns : "\"${ns}\""])})"
+
+  # create filter mapping based on alert level
+  k8s_alert_level_filter = {
+    "ALL"      = local.k8s_ns_filter
+    "SYSTEM"   = local.k8s_system_ns_filter
+    "DISABLED" = "false"
+  }
 
   # do the same for journald services
   # todo: the PRIORITY filter is probably not needed anymore since we do parsing in vector
@@ -394,8 +422,9 @@ locals {
 
 output "log_rules" {
   value = templatefile("${path.module}/vlogs-alert-rules.yaml.tftpl", {
-    error_base_filter = local.error_base_filter
-    k8s_ns_filter     = local.k8s_ns_filter
+    error_base_filter     = local.error_base_filter
+    k8s_ns_filter         = local.k8s_alert_level_filter[var.k8s_log_alert_level]
+    k8s_alert_level       = var.k8s_log_alert_level
     k8s_ns_specific = merge(local.k8s_ns_specific_base_expressions, var.victorialogs_k8s_override_expressions)
     journald_service_filter = local.journald_service_filter
     journald_service_specific = merge(local.journald_service_specific_base_expressions, var.victorialogs_systemd_override_expressions)

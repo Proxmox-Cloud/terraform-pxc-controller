@@ -35,6 +35,8 @@ module "mon_shared" {
 
   tolerations = var.tolerations
   node_selector = var.node_selector
+
+  k8s_log_alert_level = var.k8s_log_alert_level
 }
 
 data "pxc_cloud_self" "self" {}

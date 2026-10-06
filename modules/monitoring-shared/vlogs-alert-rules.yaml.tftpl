@@ -44,6 +44,7 @@ server:
                 description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
 %{ endfor }
 
+%{ if k8s_alert_level != "DISABLED" }
         # this is a generic catch for anything not defined in the specific rulesset
         - name: "K8S Log Base Alerts" 
           type: vlogs
@@ -56,3 +57,4 @@ server:
               annotations:
                 summary: 'Errors {{ if gt $value 500.0 }}critical{{ else }}high{{ end }} in {{ index $labels "kubernetes.pod_namespace" }}.'
                 description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
+%{ endif }

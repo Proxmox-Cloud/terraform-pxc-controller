@@ -139,3 +139,13 @@ variable "vmalert_eval_interval" {
   default = "1m"
   description = "How often log rules are evaluated, can be increased to save cpu."
 }
+
+variable "k8s_log_alert_level" {
+  type    = string
+  default = "ALL"
+  description = "Controls k8s log alerting scope: ALL (all namespaces), SYSTEM (k8s + Proxmox system namespaces only), DISABLED (no k8s alerts)."
+  validation {
+    condition     = contains(["ALL", "SYSTEM", "DISABLED"], var.k8s_log_alert_level)
+    error_message = "Must be ALL, SYSTEM, or DISABLED."
+  }
+}
