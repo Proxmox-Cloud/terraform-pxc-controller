@@ -139,7 +139,7 @@ def has_image_pull_backoff(namespace, job_name, core_v1_api):
                 if (
                     container_status.state
                     and container_status.state.waiting
-                    and container_status.state.waiting.reason == "ImagePullBackOff"
+                    and container_status.state.waiting.reason in ["ImagePullBackOff", "ErrImagePull"]
                 ):
                     return True
     return False
@@ -371,6 +371,8 @@ def secondary_scenario(
 
 @cloud_fixture("k0s", "k0s-edge")
 def k0s_edge_scenario(request, get_proxmoxer, get_test_env, get_k0s_api_v1, get_k0s_api_v1_batch):
+    cleanup_failed_startup_cronjobs(get_k0s_api_v1_batch, get_k0s_api_v1)
+
     scenario_name = "k0s-edge"
 
     # additional environmental variables for this tf scenario

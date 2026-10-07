@@ -364,7 +364,7 @@ locals {
   error_base_filter = "!level: i(info) AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault))"
 
   # system namespaces for SYSTEM alert level mode
-  k8s_system_namespaces = [
+  k8s_system_base_namespaces = [
     "kube-system",
     "kube-public",
     "kube-node-lease",
@@ -384,23 +384,26 @@ locals {
     "kube-system" = "${local.error_base_filter} AND !\"falling back\" AND !~\"W\\\\d+\\\\s.*addrConn.createTransport\" AND kubernetes.pod_namespace: \"kube-system\""
   }
 
+  # for monitoring system namespaces, we still need to substract namespace specific alert rules to avoid
+  # handleing a system namespace twice
+  k8s_system_namespaces = setsubtract(local.k8s_system_base_namespaces, keys(merge(local.k8s_ns_specific_base_expressions, var.victorialogs_k8s_override_expressions)))
+
   # build system namespace filter for SYSTEM mode
   k8s_system_ns_filter = "kubernetes.pod_namespace: IN(${join(", ", [for ns in local.k8s_system_namespaces : "\"${ns}\""])})"
 
-  # build non-system namespace filter (for ALL mode exclusions)
-  # includes system namespaces + specific overrides + user overrides
-  k8s_non_system_ns = concat(
-    local.k8s_system_namespaces,
+  # build filter for ALL monitoring mode, in this case the base rules need to only exclude namespaces from
+  # specific rules
+  k8s_all_exclude_ns = concat(
     keys(local.k8s_ns_specific_base_expressions),
     keys(var.victorialogs_k8s_override_expressions)
   )
-  k8s_ns_filter = "kubernetes.pod_namespace:* and !kubernetes.pod_namespace: IN(${join(", ", [for ns in local.k8s_non_system_ns : "\"${ns}\""])})"
+  k8s_all_ns_filter = "kubernetes.pod_namespace:* and !kubernetes.pod_namespace: IN(${join(", ", [for ns in local.k8s_all_exclude_ns : "\"${ns}\""])})"
 
   # create filter mapping based on alert level
   k8s_alert_level_filter = {
-    "ALL"      = local.k8s_ns_filter
+    "ALL"      = local.k8s_all_ns_filter
     "SYSTEM"   = local.k8s_system_ns_filter
-    "DISABLED" = "false"
+    "DISABLED" = "DISABLED"
   }
 
   # do the same for journald services

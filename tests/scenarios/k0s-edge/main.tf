@@ -37,6 +37,8 @@ module "ext_pxc_controller" {
   cloud_controller_version = var.cloud_controller_version
 
   log_level = "DEBUG"
+
+  adm_controller_replicas = 1
 }
 
 module "external_acme" {
@@ -92,6 +94,9 @@ module "tf_monitoring" {
 
   external_pxc_vlogs_host = "vlogs.${local.test_pve_conf["kubernetes"]["deployments_domain"]}"
 
-  # test only logging system alerts
-  k8s_log_alert_level = "SYSTEM"
+  # disable grafana to perserve ram
+  kube_prom_stack_extra_helm_values = <<-YAML
+    grafana:
+      enabled: false
+  YAML
 }
