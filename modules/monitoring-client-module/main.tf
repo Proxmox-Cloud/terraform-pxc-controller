@@ -35,6 +35,8 @@ module "mon_shared" {
 
   tolerations = var.tolerations
   node_selector = var.node_selector
+
+  k8s_log_alert_level = var.k8s_log_alert_level
 }
 
 data "pxc_cloud_self" "self" {}
@@ -92,11 +94,9 @@ resource "helm_release" "kube_prom_stack" {
   values = [
     module.mon_shared.scrape_config,
     module.mon_shared.rules,
-    yamlencode({
-      grafana = var.grafana_subchart_values
-    }), # custom values for grafana config (oidc pass)
     module.mon_shared.tolerations_snippet,
-    var.logging_only ? "{}" : yamlencode({
+    var.kube_prom_stack_extra_helm_values,
+    var.disable_alerting ? "{}" : yamlencode({
       alertmanager = {
         # expose alertmanager via ingress for karma in master stack to fetch
         ingress = {

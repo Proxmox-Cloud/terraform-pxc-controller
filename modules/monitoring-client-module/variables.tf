@@ -26,9 +26,10 @@ variable "victorialogs_vector_tolerations" {
   default =  []
 }
 
-variable "grafana_subchart_values" {
-  type = any
-  default = {}
+variable "kube_prom_stack_extra_helm_values" {
+  type = string
+  default = "{}"
+  description = "Extra values that will be added to the kube-prometheus-stack helm deployment. Needs to be a yaml string."
 }
 
 variable "monitor_proxmox_cluster" {
@@ -102,10 +103,10 @@ variable "tolerations" {
   description = "Tolerations to add to all controller deployments/jobs."
 }
 
-variable "logging_only" {
+variable "disable_alerting" {
   type = bool
   default = false
-  description = "Turns off alerting features and only funnels logs to the master cloud monitoring stack."
+  description = "Disables alerting features and only funnels logs to the master cloud monitoring stack."
 }
 
 variable "vector_daemonset_memory_limit" {
@@ -129,4 +130,14 @@ variable "external_pxc_vlogs_host" {
   type = string
   default = null
   description = "Hostname of victorialogs single db. Will take the central master stacks basic auth credentials from linked clouds."
+}
+
+variable "k8s_log_alert_level" {
+  type    = string
+  default = "ALL"
+  description = "Controls k8s log alerting scope: ALL (all namespaces), SYSTEM (k8s + Proxmox system namespaces only), DISABLED (no k8s alerts)."
+  validation {
+    condition     = contains(["ALL", "SYSTEM", "DISABLED"], var.k8s_log_alert_level)
+    error_message = "Must be ALL, SYSTEM, or DISABLED."
+  }
 }

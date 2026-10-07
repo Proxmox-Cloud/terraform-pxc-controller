@@ -29,6 +29,7 @@ server:
                 summary: 'Errors {{ if gt $value 500.0 }}critical{{ else }}high{{ end }} on {{ index $labels "pve_stack" }}.'
                 description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}.'
 
+%{ if k8s_alert_level != "DISABLED" }
         # here are our specific k8s namespace based rules
 %{ for namespace, base_expr in k8s_ns_specific }
         - name: "K8S Log ${namespace} Alerts"
@@ -56,3 +57,5 @@ server:
               annotations:
                 summary: 'Errors {{ if gt $value 500.0 }}critical{{ else }}high{{ end }} in {{ index $labels "kubernetes.pod_namespace" }}.'
                 description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
+
+%{ endif }

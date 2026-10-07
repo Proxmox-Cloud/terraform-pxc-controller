@@ -37,9 +37,10 @@ variable "extra_alert_rules" {
   default = {}
 }
 
-variable "grafana_subchart_values" {
-  type = any
-  default = {}
+variable "kube_prom_stack_extra_helm_values" {
+  type = string
+  default = "{}"
+  description = "Extra values that will be added to the kube-prometheus-stack helm deployment. Needs to be a yaml string."
 }
 
 variable "external_karma_alertmanagers" {
@@ -138,4 +139,14 @@ variable "vmalert_eval_interval" {
   type = string
   default = "1m"
   description = "How often log rules are evaluated, can be increased to save cpu."
+}
+
+variable "k8s_log_alert_level" {
+  type    = string
+  default = "ALL"
+  description = "Controls k8s log alerting scope: ALL (all namespaces), SYSTEM (k8s + Proxmox system namespaces only), DISABLED (no k8s alerts)."
+  validation {
+    condition     = contains(["ALL", "SYSTEM", "DISABLED"], var.k8s_log_alert_level)
+    error_message = "Must be ALL, SYSTEM, or DISABLED."
+  }
 }

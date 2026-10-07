@@ -7,3 +7,4 @@ __pycache__
 .terraformrc-e2e
 
 .debug.env
+*.patch

@@ -1,6 +1,6 @@
-# terraform-pxc-controller
+# Agent Instructions
 
-Deploys the Proxmox Cloud controller on Kubernetes: controller/admission deployments, namespace & pod watchers, DNS sync cron job, init job, and cluster-admin RBAC binding. Handles internal ingress DNS (PVE BIND), optional external ingress DNS (Route53 via `route53_*` vars), TLS certificate injection into namespaces (CA + `cluster-tls` secret in `tls.tf`), and optional harbor mirror-credentials injection (pull secret, `exclude_mirror_namespaces`).
+The root terraform module deploys the Proxmox Cloud controller on Kubernetes: controller/admission deployments, namespace & pod watchers, DNS sync cron job, init job, and cluster-admin RBAC binding. Handles internal ingress DNS (PVE BIND), optional external ingress DNS (Route53 via `route53_*` vars), TLS certificate injection into namespaces (CA + `cluster-tls` secret in `tls.tf`), and optional harbor mirror-credentials injection (pull secret, `exclude_mirror_namespaces`).
 
 ## Testing
 

@@ -75,6 +75,9 @@ module "tf_monitoring" {
 
   victorialogs_sc_name = "openebs-zfspv-zvol"
 
+  # test only logging system alerts
+  k8s_log_alert_level = "SYSTEM"
+
   node_selector = {
     "kubernetes.io/os" = "linux"
   }

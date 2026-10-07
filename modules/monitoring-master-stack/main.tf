@@ -35,6 +35,8 @@ module "mon_shared" {
 
   tolerations = var.tolerations
   node_selector = var.node_selector
+
+  k8s_log_alert_level = var.k8s_log_alert_level
 }
 
 data "pxc_cloud_self" "self" {}
@@ -67,10 +69,8 @@ resource "helm_release" "kube_prom_stack" {
     yamlencode({
       additionalPrometheusRulesMap = var.extra_alert_rules
     }),
-    yamlencode({
-      grafana = var.grafana_subchart_values
-    }), # custom values for grafana config (oidc pass)
     module.mon_shared.tolerations_snippet,
+    var.kube_prom_stack_extra_helm_values,
     # alertmanager settings and notification piping
     yamlencode({
       alertmanager = {
