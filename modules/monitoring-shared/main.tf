@@ -327,6 +327,7 @@ output "vl_single_config" {
             "nginx.ingress.kubernetes.io/auth-secret": "basic-auth-vlogs"
             "nginx.ingress.kubernetes.io/auth-realm": "Authentication Required"
             "nginx.ingress.kubernetes.io/proxy-body-size": "1G"
+            "nginx.ingress.kubernetes.io/client-body-buffer-size: "256k"
           enabled: true
           ingressClassName: nginx
           hosts:
