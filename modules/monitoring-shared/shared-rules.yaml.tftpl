@@ -12,7 +12,7 @@ additionalPrometheusRulesMap:
         rules:
           - alert: "TargetDown"
             for: "10m"
-            expr: '100 * (count by (cluster, job, namespace, service) (up{optional!="true", job!~"pve-node.*|pve-systemd"} == 0) / count by (cluster, job, namespace, service) (up{optional!="true", job!~"pve-node.*|pve-systemd"})) > 10'
+            expr: '100 * (count by (cluster, job, namespace, service, stack) (up{optional!="true", job!~"pve-node.*|pve-systemd"} == 0) / count by (cluster, job, namespace, service, stack) (up{optional!="true", job!~"pve-node.*|pve-systemd"})) > 10'
             labels:
               severity: critical
             annotations:
