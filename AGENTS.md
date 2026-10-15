@@ -6,7 +6,7 @@ The root terraform module deploys the Proxmox Cloud controller on Kubernetes: co
 
 Ignore the tests under `tests/e2e` and `tests/scenarios` these are tests executed by real developers on a running test environment you dont have access to.
 
-For validation create terraform unit tests in the `tests/unit/...` directory. Run these with `terraform init && terraform test` from the relevant test directories. 
+For validation create terraform unit tests in the directories of the modules being testet. For example the test in `modules/harbor-namespace-inject/main.tftest.hcl`. The test can be invoked from the directory of the submodule using `terraform init`, followed by `terraform test`.
 
 ## Submodules (`modules/`)
 
