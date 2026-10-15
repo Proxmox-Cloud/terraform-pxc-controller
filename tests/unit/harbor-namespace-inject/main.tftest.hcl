@@ -1,12 +1,10 @@
-variable "test_namespace" {
-  type    = string
-  default = "test-ns"
+
+variables {
+  test_namespace    = "test-ns"
+  test_dockerconfig = "{\"auths\":{\"harbor.example.com\":{\"username\":\"robot\",\"password\":\"secret\"}}}"
 }
 
-variable "test_dockerconfig" {
-  type    = string
-  default = "{\"auths\":{\"harbor.example.com\":{\"username\":\"robot\",\"password\":\"secret\"}}}"
-}
+mock_provider "kubernetes" {}
 
 run "secret_name_is_cluster_pull_secret" {
   command = plan
