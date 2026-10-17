@@ -1,8 +1,9 @@
 import pytest
 from pve_cloud_test.terraform import apply_integration, destroy_integration
+from pve_cloud_test.cloud_fixtures import cloud_fixture
 
 
-@pytest.fixture(scope="session")
+@cloud_fixture("vlogs")
 def vlogs_alerts_scenario(integration_config):
     scenario_name = "vlogs-alerts"
 

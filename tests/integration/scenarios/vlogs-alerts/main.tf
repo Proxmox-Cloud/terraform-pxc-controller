@@ -17,3 +17,32 @@ resource "kubernetes_namespace" "test" {
     name = "test"
   }
 }
+
+
+resource "helm_release" "vlogs" {
+  repository = "https://victoriametrics.github.io/helm-charts/"
+  chart = "victoria-logs-single"
+  version = "0.13.9"
+  name = "vlogs"
+  namespace = "vlogs-alerts"
+  create_namespace = true
+
+  timeout = 1200
+}
+
+resource "helm_release" "vmalert" {
+  repository ="https://victoriametrics.github.io/helm-charts/"
+  chart = "victoria-metrics-alert"
+  version = "0.47.0"
+  name = "vmalert"
+  namespace = helm_release.vlogs.namespace
+
+  values = [
+    <<-YML
+      server:
+        datasource:
+          url: "http://vlogs-victoria-logs-single-server:9428"
+    YML
+  ]
+  timeout = 1200
+}
