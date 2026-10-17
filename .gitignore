@@ -8,3 +8,5 @@ __pycache__
 
 .debug.env
 *.patch
+
+terraform.tfstate*
