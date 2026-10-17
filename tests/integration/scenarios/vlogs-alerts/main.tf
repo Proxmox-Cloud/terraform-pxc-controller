@@ -41,7 +41,6 @@ resource "helm_release" "vlogs" {
   #   YML
   # ]
 
-  timeout = 1200
 }
 
 resource "helm_release" "vmalert" {
@@ -58,5 +57,4 @@ resource "helm_release" "vmalert" {
           url: "http://vlogs-victoria-logs-single-server:9428"
     YML
   ]
-  timeout = 1200
 }
