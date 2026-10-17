@@ -10,3 +10,4 @@ __pycache__
 *.patch
 
 terraform.tfstate*
+.itgr-test-ns

@@ -6,7 +6,43 @@ The root terraform module deploys the Proxmox Cloud controller on Kubernetes: co
 
 Ignore the tests under `tests/e2e` and `tests/scenarios` these are tests executed by real developers on a running test environment you dont have access to.
 
-For validation create terraform unit tests in the directories of the modules being testet. For example the test in `modules/harbor-namespace-inject/main.tftest.hcl`. The test can be invoked from the directory of the submodule using `terraform init`, followed by `terraform test`.
+For running tests you should strictly focus on the integration tests located under `tests/integration`. Always run tests to validate your changes!
+
+To run tests you have to do the following:
+
+1. First always run the setup bash script with `source tests/setup-integration-env.sh`. This sets up the python enviroment and any needed dependencies.
+2. Run the integration tests:
+```bash
+# run the entire integration testing suite
+pytest -s tests/integration/
+
+# run specific tests
+pytest -s tests/integration/test_modules.py::test_vlogs_alerting_rules
+```
+
+### Debugging
+
+When a test fails or when you want to analyze, you can run it again but with the `--skip-cleanup` flag passed to `pytest`. This will cause the integration infrastructure to be kept for you to inspect it and draw conclusions.
+
+Use the following snippet to gain `kubectl` access to the integration test infrastructure / deployments:
+
+```bash
+agent-kubeconfig > .agent-kubeconfig.yml
+export KUBECONFIG=$(pwd)/.agent-kubeconfig.yml
+
+# ... use any kubectl commands need to analyze / test
+INTEGRATION_NS=$(cat .itgr-test-ns)
+kubectl get pods -n $INTEGRATION_NS # for example
+
+```
+
+Each integration test run generates its own namespace, fetch this from the `pytest ... --skip-cleanup` shell log, it will also be written to the local file `.itgr-test-ns` in the current workdir by the test itself.
+
+## Writing Tests
+
+Features you create should make use of the integration testing library. You should create integration tests and execute them to validate your changes!
+
+To understand how to write them you may analyze the existing tests in `tests/integration`.
 
 ## Submodules (`modules/`)
 
