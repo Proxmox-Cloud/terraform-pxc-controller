@@ -4,7 +4,7 @@ from pve_cloud_test.terraform import apply_integration, destroy_integration
 
 
 @cloud_fixture("vlogs")
-def vlogs_alerts_scenario(integration_config):
+def vlogs_alerts_scenario(request, integration_config):
     scenario_name = "vlogs-alerts"
 
     kubeconfig_path, _, v1, namespace = integration_config
