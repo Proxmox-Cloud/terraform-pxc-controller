@@ -8,7 +8,7 @@ def vlogs_alerts_scenario(integration_config):
 
     kubeconfig_path, _, v1, namespace = integration_config
 
-    extra_apply_env = { "TF_VAR_vcluster_config_path": kubeconfig_path }
+    extra_apply_env = {"TF_VAR_vcluster_config_path": kubeconfig_path}
 
     apply_integration(scenario_name, extra_apply_env)
 
