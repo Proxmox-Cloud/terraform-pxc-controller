@@ -1,6 +1,6 @@
 import pytest
-from pve_cloud_test.terraform import apply_integration, destroy_integration
 from pve_cloud_test.cloud_fixtures import cloud_fixture
+from pve_cloud_test.terraform import apply_integration, destroy_integration
 
 
 @cloud_fixture("vlogs")
