@@ -16,12 +16,6 @@ provider "helm" {
   }
 }
 
-resource "kubernetes_namespace" "test" {
-  metadata {
-    name = "test"
-  }
-}
-
 resource "helm_release" "vlogs" {
   repository = "https://victoriametrics.github.io/helm-charts/"
   chart = "victoria-logs-single"
