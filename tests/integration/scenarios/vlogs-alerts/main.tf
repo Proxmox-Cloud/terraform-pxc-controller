@@ -22,6 +22,7 @@ resource "helm_release" "vlogs" {
   version = "0.13.9"
   name = "vlogs"
   namespace = var.integration_ns
+  upgrade_install = true
 
   # values = [
   #   <<-YML
@@ -43,6 +44,7 @@ resource "helm_release" "vmalert" {
   version = "0.47.0"
   name = "vmalert"
   namespace = var.integration_ns
+  upgrade_install = true
 
   values = [
     <<-YML
