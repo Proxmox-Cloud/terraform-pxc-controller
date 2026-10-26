@@ -3,7 +3,7 @@ server:
     alerts:
       groups:
         # here are our specific journald service based rules
-%{ for service, base_expr in jsondecode(journald_service_specific) }
+%{ for service, base_expr in journald_service_specific }
         - name: "Journald Log ${service} Alerts"
           type: vlogs
           rules:
@@ -44,7 +44,7 @@ server:
 
 %{ if k8s_alert_level != "DISABLED" }
         # here are our specific k8s namespace based rules
-%{ for namespace, base_expr in jsondecode(k8s_ns_specific) }
+%{ for namespace, base_expr in k8s_ns_specific }
         - name: "K8S Log ${namespace} Alerts"
           type: vlogs
           rules:

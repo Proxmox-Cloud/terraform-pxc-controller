@@ -21,16 +21,16 @@ provider "helm" {
 }
 
 # Render the vlogs alert rules template from the monitoring-shared module
-data "template_file" "vlogs_alert_rules" {
-  template = file("${var.pytest_cwd}/modules/monitoring-shared/vlogs-alert-rules.yaml.tftpl")
-  vars = {
+# Using templatefile() function which accepts actual dicts (unlike template_file data source)
+locals {
+  vlogs_alert_rules = templatefile("${var.pytest_cwd}/modules/monitoring-shared/vlogs-alert-rules.yaml.tftpl", {
     error_base_filter       = "!level: i(info) AND (i(panic) OR i(exception) OR i(fatal) OR i(critical) OR i(error) OR i(segfault))"
     k8s_ns_filter           = "kubernetes.pod_namespace:*"
     k8s_alert_level         = "ALL"
-    k8s_ns_specific         = jsonencode({})
+    k8s_ns_specific         = {}
     journald_service_filter = "_SYSTEMD_UNIT:*"
-    journald_service_specific = jsonencode({})
-  }
+    journald_service_specific = {}
+  })
 }
 
 resource "helm_release" "vlogs" {
@@ -72,7 +72,7 @@ resource "helm_release" "vmalert" {
           url: "http://vlogs-victoria-logs-single-server:9428"
         rules:
           yaml: |
-            ${data.template_file.vlogs_alert_rules.rendered}
+            ${local.vlogs_alert_rules}
         extraArgs:
           notifier.blackhole: "true"
     YML
