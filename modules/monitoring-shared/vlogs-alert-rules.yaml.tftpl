@@ -3,7 +3,7 @@ server:
     alerts:
       groups:
         # here are our specific journald service based rules
-%{ if journald_service_specific != "" }%{ for service, base_expr in jsondecode(journald_service_specific) }
+%{ for service, base_expr in jsondecode(journald_service_specific) }
         - name: "Journald Log ${service} Alerts"
           type: vlogs
           rules:
@@ -15,7 +15,7 @@ server:
               annotations:
                 summary: 'Errors {{ if gt $value 500.0 }}critical{{ else }}high{{ end }} on {{ index $labels "pve_stack" }}.'
                 description: 'In the last hour {{ $value }} errors occured on {{ $labels.host }} for systemd {{ $labels._SYSTEMD_UNIT }}.'
-%{ endfor }%{ endif }
+%{ endfor }
         - name: "Journald Log Base Alerts"
           type: vlogs
           rules:
@@ -44,7 +44,7 @@ server:
 
 %{ if k8s_alert_level != "DISABLED" }
         # here are our specific k8s namespace based rules
-%{ if k8s_ns_specific != "" }%{ for namespace, base_expr in jsondecode(k8s_ns_specific) }
+%{ for namespace, base_expr in jsondecode(k8s_ns_specific) }
         - name: "K8S Log ${namespace} Alerts"
           type: vlogs
           rules:
@@ -56,7 +56,7 @@ server:
               annotations:
                 summary: 'Errors {{ if gt $value 500.0 }}critical{{ else }}high{{ end }} in {{ index $labels "kubernetes.pod_namespace" }}.'
                 description: 'In the last hour {{ $value }} errors occured for container {{ index $labels "kubernetes.container_name" }} in k8s stack {{ index $labels "pve_stack" }}.'
-%{ endfor }%{ endif }
+%{ endfor }
 
         # this is a generic catch for anything not defined in the specific rulesset
         - name: "K8S Log Base Alerts" 
