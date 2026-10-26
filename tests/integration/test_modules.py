@@ -1,7 +1,6 @@
 import logging
 
 import requests
-
 from fixtures import *
 from pve_cloud_test.integration import integration_config
 
@@ -38,12 +37,15 @@ def test_vlogs_alerting_rules(request, integration_config, vlogs_alerts_scenario
     ) as loopback_addr:
         # Wait a bit for the port forward to establish
         import time
+
         time.sleep(3)
 
         # Check the health endpoint
         health_url = f"http://{loopback_addr}:8880/-/healthy"
         response = requests.get(health_url, timeout=10)
-        assert response.status_code == 200, f"vmalert health check failed: {response.text}"
+        assert (
+            response.status_code == 200
+        ), f"vmalert health check failed: {response.text}"
         assert "VictoriaMetrics is Healthy" in response.text
 
         # Check the rules endpoint to verify all alert groups are loaded
@@ -52,7 +54,9 @@ def test_vlogs_alerting_rules(request, integration_config, vlogs_alerts_scenario
         assert response.status_code == 200, f"Failed to get rules: {response.text}"
 
         rules_data = response.json()
-        assert rules_data["status"] == "success", "Rules API returned non-success status"
+        assert (
+            rules_data["status"] == "success"
+        ), "Rules API returned non-success status"
 
         groups = rules_data["data"]["groups"]
         group_names = [g["name"] for g in groups]
@@ -66,12 +70,18 @@ def test_vlogs_alerting_rules(request, integration_config, vlogs_alerts_scenario
         ]
 
         for expected_group in expected_groups:
-            assert expected_group in group_names, f"Expected group '{expected_group}' not found in {group_names}"
+            assert (
+                expected_group in group_names
+            ), f"Expected group '{expected_group}' not found in {group_names}"
 
         # Verify the rules are healthy
         for group in groups:
-            assert group["type"] == "vlogs", f"Group {group['name']} is not a vlogs type"
+            assert (
+                group["type"] == "vlogs"
+            ), f"Group {group['name']} is not a vlogs type"
             for rule in group["rules"]:
-                assert rule["health"] == "ok", f"Rule {rule['name']} in group {group['name']} is not healthy"
+                assert (
+                    rule["health"] == "ok"
+                ), f"Rule {rule['name']} in group {group['name']} is not healthy"
 
         logger.info(f"Successfully validated {len(groups)} alert groups: {group_names}")
