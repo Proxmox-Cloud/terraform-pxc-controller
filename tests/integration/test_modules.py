@@ -1,8 +1,10 @@
 import logging
+import time
 
+import pytest
 import requests
 from fixtures import *
-from pve_cloud_test.integration import integration_config
+from pve_cloud_test.integration import forward_ports_local_addr, integration_config
 
 logger = logging.getLogger(__name__)
 
@@ -11,10 +13,6 @@ def test_vlogs_alerting_rules(request, integration_config, vlogs_alerts_scenario
     logger.info("test setup acme certs")
 
     kubeconfig_path, k8s_client, v1, namespace = integration_config
-
-    # Use the forward_ports_local_addr context manager to forward vmalert port
-    # and validate that the alerts are loaded correctly
-    from pve_cloud_test.integration import forward_ports_local_addr
 
     # Find the vmalert pod
     pods = v1.list_namespaced_pod(namespace)
