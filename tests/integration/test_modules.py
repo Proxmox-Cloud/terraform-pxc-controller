@@ -75,21 +75,45 @@ def test_vlogs_alerting_rules(request, integration_config, vlogs_alerts_scenario
             ), f"Expected group '{expected_group}' not found in {group_names}"
 
         # Verify the rules are healthy
-        # Note: Rules may show 'err' status initially if no data exists yet - this is expected
-        # We only check that the rules are loaded (present in the API response)
-        for group in groups:
-            assert (
-                group["type"] == "vlogs"
-            ), f"Group {group['name']} is not a vlogs type"
-            for rule in group["rules"]:
-                # Check if rule has an error and log it for debugging
-                if rule.get("health") == "err":
-                    # Log the error message but don't fail - this is expected when no data exists
-                    error_msg = rule.get("lastEvaluationError", "unknown error")
-                    logger.warning(
-                        f"Rule {rule['name']} in group {group['name']} has status 'err': {error_msg}"
-                    )
-                    # For now, we accept 'err' status as it's expected when no data exists
-                    # The rule is still correctly loaded and will evaluate once data arrives
+        # Note: Rules may show 'err' status initially during startup - retry up to 5 times
+        max_retries = 5
+        retry_delay = 5  # seconds
 
-        logger.info(f"Successfully validated {len(groups)} alert groups: {group_names}")
+        for attempt in range(max_retries):
+            all_healthy = True
+            rules_with_errors = []
+
+            for group in groups:
+                assert (
+                    group["type"] == "vlogs"
+                ), f"Group {group['name']} is not a vlogs type"
+                for rule in group["rules"]:
+                    if rule.get("health") != "ok":
+                        all_healthy = False
+                        error_msg = rule.get("lastError", rule.get("lastEvaluationError", "unknown error"))
+                        rules_with_errors.append(
+                            f"Rule '{rule['name']}' in group '{group['name']}': {error_msg}"
+                        )
+
+            if all_healthy:
+                logger.info(f"Successfully validated {len(groups)} alert groups: {group_names}")
+                break
+
+            if attempt < max_retries - 1:
+                logger.warning(
+                    f"Attempt {attempt + 1}/{max_retries}: Found {len(rules_with_errors)} rules with non-healthy status. "
+                    f"Retrying in {retry_delay} seconds..."
+                )
+                time.sleep(retry_delay)
+                # Refresh the rules data
+                response = requests.get(rules_url, timeout=10)
+                assert response.status_code == 200, f"Failed to get rules: {response.text}"
+                rules_data = response.json()
+                assert rules_data["status"] == "success", "Rules API returned non-success status"
+                groups = rules_data["data"]["groups"]
+            else:
+                # All retries exhausted, fail with detailed error message
+                error_details = "\n  - ".join(rules_with_errors)
+                pytest.fail(
+                    f"Rules are not healthy after {max_retries} attempts:\n  - {error_details}"
+                )
