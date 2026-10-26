@@ -1,10 +1,10 @@
 import logging
-import time
 
 import pytest
 import requests
 from fixtures import *
-from pve_cloud_test.integration import forward_ports_local_addr, integration_config
+from pve_cloud_test.integration import (forward_ports_local_addr,
+                                        integration_config)
 
 logger = logging.getLogger(__name__)
 
@@ -90,8 +90,11 @@ def test_vlogs_alerting_rules(request, integration_config, vlogs_alerts_scenario
                 ), f"Group {group['name']} is not a vlogs type"
                 for rule in group["rules"]:
                     if rule.get("health") != "ok":
-                        error_msg = rule.get("lastError", rule.get("lastEvaluationError", "unknown error"))
-                        
+                        error_msg = rule.get(
+                            "lastError",
+                            rule.get("lastEvaluationError", "unknown error"),
+                        )
+
                         # Check if this is an expected error (no data, service not reachable)
                         # These are acceptable and should not cause test failure
                         expected_error_patterns = [
@@ -100,11 +103,12 @@ def test_vlogs_alerting_rules(request, integration_config, vlogs_alerts_scenario
                             "connection refused",
                             "timeout",
                         ]
-                        
+
                         is_expected_error = any(
-                            pattern in error_msg.lower() for pattern in expected_error_patterns
+                            pattern in error_msg.lower()
+                            for pattern in expected_error_patterns
                         )
-                        
+
                         if not is_expected_error:
                             has_unrecoverable_error = True
                             rules_with_errors.append(
@@ -113,7 +117,9 @@ def test_vlogs_alerting_rules(request, integration_config, vlogs_alerts_scenario
                             all_healthy = False
 
             if all_healthy:
-                logger.info(f"Successfully validated {len(groups)} alert groups: {group_names}")
+                logger.info(
+                    f"Successfully validated {len(groups)} alert groups: {group_names}"
+                )
                 break
 
             if has_unrecoverable_error:
@@ -131,14 +137,20 @@ def test_vlogs_alerting_rules(request, integration_config, vlogs_alerts_scenario
                 time.sleep(retry_delay)
                 # Refresh the rules data
                 response = requests.get(rules_url, timeout=10)
-                assert response.status_code == 200, f"Failed to get rules: {response.text}"
+                assert (
+                    response.status_code == 200
+                ), f"Failed to get rules: {response.text}"
                 rules_data = response.json()
-                assert rules_data["status"] == "success", "Rules API returned non-success status"
+                assert (
+                    rules_data["status"] == "success"
+                ), "Rules API returned non-success status"
                 groups = rules_data["data"]["groups"]
             else:
                 # All retries exhausted - but if all errors were expected (no data), this is OK
                 if not rules_with_errors:
-                    logger.info(f"Successfully validated {len(groups)} alert groups: {group_names}")
+                    logger.info(
+                        f"Successfully validated {len(groups)} alert groups: {group_names}"
+                    )
                     logger.warning(
                         "All rules showed expected errors (no data/service not ready) but are properly loaded."
                     )
