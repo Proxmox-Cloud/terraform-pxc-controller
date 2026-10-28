@@ -1,5 +1,5 @@
 import logging
-
+import time
 import pytest
 import requests
 from fixtures import *
@@ -34,8 +34,6 @@ def test_vlogs_alerting_rules(request, integration_config, vlogs_alerts_scenario
         kubeconfig_path=kubeconfig_path,
     ) as loopback_addr:
         # Wait a bit for the port forward to establish
-        import time
-
         time.sleep(3)
 
         # Check the health endpoint
