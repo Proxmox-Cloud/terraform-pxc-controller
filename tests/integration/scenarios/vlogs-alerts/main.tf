@@ -30,10 +30,8 @@ locals {
     k8s_ns_specific         = {}
     journald_service_filter = "_SYSTEMD_UNIT:*"
     journald_service_specific = {}
-    journald_log_volume_warning_threshold = 25000
-    journald_log_volume_critical_threshold = 75000
-    k8s_log_volume_warning_threshold = 25000
-    k8s_log_volume_critical_threshold = 75000
+    log_volume_warning_threshold = 25000
+    log_volume_critical_threshold = 75000
   })
 }
 
