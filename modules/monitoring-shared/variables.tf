@@ -116,12 +116,8 @@ variable "k8s_log_alert_level" {
 
 variable "log_volume_warning_threshold" {
   type        = number
-  default     = 25000
-  description = "Number of logs per hour that triggers a warning alert for log volume (applies to both journald and k8s)."
 }
 
 variable "log_volume_critical_threshold" {
   type        = number
-  default     = 75000
-  description = "Number of logs per hour that triggers a critical alert for log volume (applies to both journald and k8s)."
 }
