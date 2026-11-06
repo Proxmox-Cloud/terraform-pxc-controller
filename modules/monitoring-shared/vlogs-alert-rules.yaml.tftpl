@@ -34,9 +34,9 @@ server:
           type: vlogs
           rules:
             - alert: "Journald High Log Volume"
-              expr: '_time:1h AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as log_count | filter log_count:>10000'
+              expr: '_time:1h AND _SYSTEMD_UNIT:* | stats by (_SYSTEMD_UNIT, pve_stack, host) count() as log_count | filter log_count:>${log_volume_warning_threshold}'
               labels:
-                severity: '{{ if gt $value 50000.0 }}critical{{ else }}warning{{ end }}'
+                severity: '{{ if gt $value ${log_volume_critical_threshold}.0 }}critical{{ else }}warning{{ end }}'
                 namespace: '{{ index $labels "pve_stack" }}'
               annotations:
                 summary: 'High log volume detected on {{ index $labels "pve_stack" }}.'
@@ -76,9 +76,9 @@ server:
           type: vlogs
           rules:
             - alert: "K8S Container High Log Volume"
-              expr: '_time:1h AND kubernetes.container_name:* | stats by (kubernetes.container_name, kubernetes.pod_namespace, kubernetes.pod_name, pve_stack) count() as log_count | filter log_count:>10000'
+              expr: '_time:1h AND kubernetes.container_name:* | stats by (kubernetes.container_name, kubernetes.pod_namespace, kubernetes.pod_name, pve_stack) count() as log_count | filter log_count:>${log_volume_warning_threshold}'
               labels:
-                severity: '{{ if gt $value 50000.0 }}critical{{ else }}warning{{ end }}'
+                severity: '{{ if gt $value ${log_volume_critical_threshold}.0 }}critical{{ else }}warning{{ end }}'
                 namespace: '{{ index $labels "kubernetes.pod_namespace" }}'
               annotations:
                 summary: 'High log volume detected in container {{ index $labels "kubernetes.container_name" }}.'

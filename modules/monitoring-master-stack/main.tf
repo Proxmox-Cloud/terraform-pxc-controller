@@ -37,6 +37,8 @@ module "mon_shared" {
   node_selector = var.node_selector
 
   k8s_log_alert_level = var.k8s_log_alert_level
+  log_volume_warning_threshold = var.log_volume_warning_threshold
+  log_volume_critical_threshold = var.log_volume_critical_threshold
 }
 
 data "pxc_cloud_self" "self" {}

@@ -113,3 +113,11 @@ variable "k8s_log_alert_level" {
     error_message = "Must be ALL, SYSTEM, or DISABLED."
   }
 }
+
+variable "log_volume_warning_threshold" {
+  type        = number
+}
+
+variable "log_volume_critical_threshold" {
+  type        = number
+}
