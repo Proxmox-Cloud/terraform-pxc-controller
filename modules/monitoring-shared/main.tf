@@ -432,5 +432,9 @@ output "log_rules" {
     k8s_ns_specific = merge(local.k8s_ns_specific_base_expressions, var.victorialogs_k8s_override_expressions)
     journald_service_filter = local.journald_service_filter
     journald_service_specific = merge(local.journald_service_specific_base_expressions, var.victorialogs_systemd_override_expressions)
+    journald_log_volume_warning_threshold = var.journald_log_volume_warning_threshold
+    journald_log_volume_critical_threshold = var.journald_log_volume_critical_threshold
+    k8s_log_volume_warning_threshold = var.k8s_log_volume_warning_threshold
+    k8s_log_volume_critical_threshold = var.k8s_log_volume_critical_threshold
   })
 }

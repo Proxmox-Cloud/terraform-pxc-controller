@@ -141,3 +141,27 @@ variable "k8s_log_alert_level" {
     error_message = "Must be ALL, SYSTEM, or DISABLED."
   }
 }
+
+variable "journald_log_volume_warning_threshold" {
+  type        = number
+  default     = 25000
+  description = "Number of logs per hour that triggers a warning alert for journald log volume."
+}
+
+variable "journald_log_volume_critical_threshold" {
+  type        = number
+  default     = 75000
+  description = "Number of logs per hour that triggers a critical alert for journald log volume."
+}
+
+variable "k8s_log_volume_warning_threshold" {
+  type        = number
+  default     = 25000
+  description = "Number of logs per hour that triggers a warning alert for k8s container log volume."
+}
+
+variable "k8s_log_volume_critical_threshold" {
+  type        = number
+  default     = 75000
+  description = "Number of logs per hour that triggers a critical alert for k8s container log volume."
+}
